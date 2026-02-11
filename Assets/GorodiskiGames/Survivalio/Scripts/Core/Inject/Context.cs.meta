@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 3a86e93d5ba1c496f9cbe29dbb354821
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 296168
+  packageName: Survival.io
+  packageVersion: 0.1.2
+  assetPath: Assets/GorodiskiGames/Survivalio/Scripts/Core/Inject/Context.cs
+  uploadId: 832284

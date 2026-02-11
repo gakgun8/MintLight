@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: e356be7d8b4d74a01aa75d888da9b4cf
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 296168
+  packageName: Survival.io
+  packageVersion: 0.1.2
+  assetPath: Assets/GorodiskiGames/Survivalio/ResourcesStatic/Materials/UIMaterials/BossHealthBarMat.mat
+  uploadId: 832284

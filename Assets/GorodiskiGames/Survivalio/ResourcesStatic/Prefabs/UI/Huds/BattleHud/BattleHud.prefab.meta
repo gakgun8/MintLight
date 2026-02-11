@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 38b2403315d2f47d590aad16ad10c1f1
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 296168
+  packageName: Survival.io
+  packageVersion: 0.1.2
+  assetPath: Assets/GorodiskiGames/Survivalio/ResourcesStatic/Prefabs/UI/Huds/BattleHud/BattleHud.prefab
+  uploadId: 832284

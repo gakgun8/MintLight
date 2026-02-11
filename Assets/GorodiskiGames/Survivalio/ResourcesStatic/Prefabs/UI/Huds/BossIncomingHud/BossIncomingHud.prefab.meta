@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 21763a351de65473fb2f983641590c44
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 296168
+  packageName: Survival.io
+  packageVersion: 0.1.2
+  assetPath: Assets/GorodiskiGames/Survivalio/ResourcesStatic/Prefabs/UI/Huds/BossIncomingHud/BossIncomingHud.prefab
+  uploadId: 832284

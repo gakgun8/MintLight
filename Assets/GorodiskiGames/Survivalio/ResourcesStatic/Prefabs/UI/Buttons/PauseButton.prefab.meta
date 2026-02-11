@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: c3ed4149e66cb46baacb1c8519e2e6fd
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 296168
+  packageName: Survival.io
+  packageVersion: 0.1.2
+  assetPath: Assets/GorodiskiGames/Survivalio/ResourcesStatic/Prefabs/UI/Buttons/PauseButton.prefab
+  uploadId: 832284

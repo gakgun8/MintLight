@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 773fe96a05baa418889b2279fea40dd2
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 296168
+  packageName: Survival.io
+  packageVersion: 0.1.2
+  assetPath: Assets/GorodiskiGames/Survivalio/Scripts/Config/ClothConfig.cs
+  uploadId: 832284

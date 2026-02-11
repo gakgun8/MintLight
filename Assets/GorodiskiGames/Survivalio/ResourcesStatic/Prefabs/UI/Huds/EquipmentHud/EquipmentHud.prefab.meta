@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 16308016cf7cf49259a5e69f97a88cac
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 296168
+  packageName: Survival.io
+  packageVersion: 0.1.2
+  assetPath: Assets/GorodiskiGames/Survivalio/ResourcesStatic/Prefabs/UI/Huds/EquipmentHud/EquipmentHud.prefab
+  uploadId: 832284

@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: e11b92c1cad4d4312b707871546e1b82
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 11400000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 296168
+  packageName: Survival.io
+  packageVersion: 0.1.2
+  assetPath: Assets/GorodiskiGames/Survivalio/Resources/InventoryConfigs/WeaponConfigs/0KunaiDefault.asset
+  uploadId: 832284

@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 34117c77b26e94830a7ea7e608bd48fc
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 296168
+  packageName: Survival.io
+  packageVersion: 0.1.2
+  assetPath: Assets/GorodiskiGames/Survivalio/Scripts/UI/Huds/EquipmentPreviewHud/EquipmentPreviewHudView.cs
+  uploadId: 832284

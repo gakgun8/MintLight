@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: cb6df4feeac3745488e2d0d5c2b70e5d
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 296168
+  packageName: Survival.io
+  packageVersion: 0.1.2
+  assetPath: Assets/GorodiskiGames/Survivalio/Scripts/Core/StateManager/StateManager.cs
+  uploadId: 832284

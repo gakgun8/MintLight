@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 0dd7c6d89a8c04c6685b3ad76606eda2
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 296168
+  packageName: Survival.io
+  packageVersion: 0.1.2
+  assetPath: Assets/GorodiskiGames/Survivalio/Scripts/Managers/HudManager.cs
+  uploadId: 832284

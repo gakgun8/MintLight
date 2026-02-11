@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: c971936bca21747ee8028016cbc983ea
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 296168
+  packageName: Survival.io
+  packageVersion: 0.1.2
+  assetPath: Assets/GorodiskiGames/Survivalio/Scripts/UI/Huds/ShopHud/ShopHudMediator.cs
+  uploadId: 832284

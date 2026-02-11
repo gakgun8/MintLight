@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 6bfecc770a0624123b4729ecf02d4d97
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 11400000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 296168
+  packageName: Survival.io
+  packageVersion: 0.1.2
+  assetPath: Assets/GorodiskiGames/Survivalio/Resources/MenuHudConfigs/4FourthHudConfig.asset
+  uploadId: 832284

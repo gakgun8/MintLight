@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: c0600da30170143a7937437899df0439
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 11400000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 296168
+  packageName: Survival.io
+  packageVersion: 0.1.2
+  assetPath: Assets/GorodiskiGames/Survivalio/Resources/MenuHudConfigs/2BattleHudConfig.asset
+  uploadId: 832284

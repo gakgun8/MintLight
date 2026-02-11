@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: ba5e0de6cbfd43b49862c2ae55a5f0ce
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 296168
+  packageName: Survival.io
+  packageVersion: 0.1.2
+  assetPath: Assets/GorodiskiGames/Survivalio/Scripts/Utils/MissingReferencesFinder.cs
+  uploadId: 832284

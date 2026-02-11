@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: 7e36ddc0fb5784cef9ff464a88ea7d89
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 296168
+  packageName: Survival.io
+  packageVersion: 0.1.2
+  assetPath: Assets/GorodiskiGames/Survivalio/ResourcesStatic/Prefabs/UI/Huds/LeaveGameplayHud/LeaveGameplayHud.prefab
+  uploadId: 832284

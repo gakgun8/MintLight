@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: ea9e3e7fb71ef41c09cf12c7024f9415
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 296168
+  packageName: Survival.io
+  packageVersion: 0.1.2
+  assetPath: Assets/GorodiskiGames/Survivalio/Scripts/Enemy/EnemyView.cs
+  uploadId: 832284

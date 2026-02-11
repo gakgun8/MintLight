@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 0b890700330c222469ff87082bb6262a
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 296168
+  packageName: Survival.io
+  packageVersion: 0.1.2
+  assetPath: Assets/GorodiskiGames/Survivalio/ResourcesStatic/Prefabs/Effects/Blood/BloodEffectMaterial.mat
+  uploadId: 832284

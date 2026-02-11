@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: c3afd2f10c388b74f8baa2116d204a0e
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 296168
+  packageName: Survival.io
+  packageVersion: 0.1.2
+  assetPath: Assets/GorodiskiGames/Survivalio/Scripts/Managers/AdsManager/AdsManager.cs
+  uploadId: 832284

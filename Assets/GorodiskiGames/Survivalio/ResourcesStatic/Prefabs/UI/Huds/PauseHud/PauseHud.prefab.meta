@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: d0205dfa94b0843e68308a03d34469a0
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 296168
+  packageName: Survival.io
+  packageVersion: 0.1.2
+  assetPath: Assets/GorodiskiGames/Survivalio/ResourcesStatic/Prefabs/UI/Huds/PauseHud/PauseHud.prefab
+  uploadId: 832284

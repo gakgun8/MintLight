@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 402696866fdc340549297ecf99d7ea0e
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 296168
+  packageName: Survival.io
+  packageVersion: 0.1.2
+  assetPath: Assets/GorodiskiGames/Survivalio/Scripts/UI/Huds/PauseHud/PauseHudView.cs
+  uploadId: 832284

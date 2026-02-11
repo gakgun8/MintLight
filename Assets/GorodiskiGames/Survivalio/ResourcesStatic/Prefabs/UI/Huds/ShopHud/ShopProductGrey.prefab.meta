@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: a577c2578a3da4ef683699d8633f796d
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 296168
+  packageName: Survival.io
+  packageVersion: 0.1.2
+  assetPath: Assets/GorodiskiGames/Survivalio/ResourcesStatic/Prefabs/UI/Huds/ShopHud/ShopProductGrey.prefab
+  uploadId: 832284

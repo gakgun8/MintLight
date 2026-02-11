@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 6bf3a2f444b4a4edf9a5e0299c2b1d59
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 11400000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 296168
+  packageName: Survival.io
+  packageVersion: 0.1.2
+  assetPath: Assets/GorodiskiGames/Survivalio/Resources/EnemyConfigs/Enemy0.asset
+  uploadId: 832284

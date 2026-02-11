@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 6cb52f343858c423e80f0e8ab19f85ed
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 296168
+  packageName: Survival.io
+  packageVersion: 0.1.2
+  assetPath: Assets/GorodiskiGames/Survivalio/Scripts/Core/UI/BehaviourComponent.cs
+  uploadId: 832284

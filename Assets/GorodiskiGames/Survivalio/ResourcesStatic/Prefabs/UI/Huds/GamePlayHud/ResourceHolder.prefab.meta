@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: c93a38418a20546f684b47470eb69c4c
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 296168
+  packageName: Survival.io
+  packageVersion: 0.1.2
+  assetPath: Assets/GorodiskiGames/Survivalio/ResourcesStatic/Prefabs/UI/Huds/GamePlayHud/ResourceHolder.prefab
+  uploadId: 832284

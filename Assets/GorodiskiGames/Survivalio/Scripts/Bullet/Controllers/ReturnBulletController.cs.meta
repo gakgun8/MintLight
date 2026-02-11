@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 1b47c541424f34a7f8632eb1ed1cf60e
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 296168
+  packageName: Survival.io
+  packageVersion: 0.1.2
+  assetPath: Assets/GorodiskiGames/Survivalio/Scripts/Bullet/Controllers/ReturnBulletController.cs
+  uploadId: 832284

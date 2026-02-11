@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: d51c734f19566473e9c48304bb179e53
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 296168
+  packageName: Survival.io
+  packageVersion: 0.1.2
+  assetPath: Assets/GorodiskiGames/Survivalio/ResourcesStatic/Prefabs/UI/UISelectable/SliderSelectable.prefab
+  uploadId: 832284

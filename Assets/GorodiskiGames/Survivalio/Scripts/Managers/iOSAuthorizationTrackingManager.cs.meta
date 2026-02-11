@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 8aba042730c6d4100b103cec7780ed4f
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 296168
+  packageName: Survival.io
+  packageVersion: 0.1.2
+  assetPath: Assets/GorodiskiGames/Survivalio/Scripts/Managers/iOSAuthorizationTrackingManager.cs
+  uploadId: 832284

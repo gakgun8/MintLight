@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: 5da659b470730435c811df1b3a4d526b
+ShaderImporter:
+  externalObjects: {}
+  defaultTextures: []
+  nonModifiableTextures: []
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 296168
+  packageName: Survival.io
+  packageVersion: 0.1.2
+  assetPath: Assets/GorodiskiGames/Survivalio/ResourcesStatic/Shaders/GradientHorizontal.shader
+  uploadId: 832284

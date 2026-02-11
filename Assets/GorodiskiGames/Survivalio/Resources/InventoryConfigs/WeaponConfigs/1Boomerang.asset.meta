@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: a867b1540773e4502bea6cdecdd6b2f5
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 11400000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 296168
+  packageName: Survival.io
+  packageVersion: 0.1.2
+  assetPath: Assets/GorodiskiGames/Survivalio/Resources/InventoryConfigs/WeaponConfigs/1Boomerang.asset
+  uploadId: 832284

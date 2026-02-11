@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: fc01de4752fc24892aec881d6cb6ff6c
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 296168
+  packageName: Survival.io
+  packageVersion: 0.1.2
+  assetPath: Assets/GorodiskiGames/Survivalio/ResourcesStatic/Prefabs/UI/Huds/EquipmentHud/HealthAttributeSlot.prefab
+  uploadId: 832284

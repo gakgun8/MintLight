@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: e2d0354b4c00ba64a917dbb0d79143b1
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 296168
+  packageName: Survival.io
+  packageVersion: 0.1.2
+  assetPath: Assets/GorodiskiGames/Survivalio/ResourcesStatic/Prefabs/Effects/Explosion/ExplosionDotsMat.mat
+  uploadId: 832284

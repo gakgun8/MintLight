@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: cf88f330d5c2143a094e9367479faffb
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 296168
+  packageName: Survival.io
+  packageVersion: 0.1.2
+  assetPath: Assets/GorodiskiGames/Survivalio/ResourcesStatic/Prefabs/UI/Huds/SplashScreenHud/SplashScreenHud.prefab
+  uploadId: 832284

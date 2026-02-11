@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: fa06167e511a84b008b77ab58c390803
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 296168
+  packageName: Survival.io
+  packageVersion: 0.1.2
+  assetPath: Assets/GorodiskiGames/Survivalio/ResourcesStatic/Prefabs/UI/UISelectable/ButtonSelectable.prefab
+  uploadId: 832284

@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 998da07f5f1dc44f8b2a9f43f797d432
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 296168
+  packageName: Survival.io
+  packageVersion: 0.1.2
+  assetPath: Assets/GorodiskiGames/Survivalio/Scripts/UI/Huds/GamePlayHud/GamePlayHudMediator.cs
+  uploadId: 832284

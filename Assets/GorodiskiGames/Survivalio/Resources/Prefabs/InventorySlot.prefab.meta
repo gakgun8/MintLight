@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: dbc9101149a3a414a905cef96c6a0635
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 296168
+  packageName: Survival.io
+  packageVersion: 0.1.2
+  assetPath: Assets/GorodiskiGames/Survivalio/Resources/Prefabs/InventorySlot.prefab
+  uploadId: 832284

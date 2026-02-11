@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 32d140825532b4e429dc6f291b970fce
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 296168
+  packageName: Survival.io
+  packageVersion: 0.1.2
+  assetPath: Assets/GorodiskiGames/Survivalio/Scripts/UI/Huds/PurchaseEnergyHud/PurchaseEnergyHudMediator.cs
+  uploadId: 832284

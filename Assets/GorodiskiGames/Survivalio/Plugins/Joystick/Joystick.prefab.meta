@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: facd2ddcb5f5dd04ebeb9ba8addae114
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 296168
+  packageName: Survival.io
+  packageVersion: 0.1.2
+  assetPath: Assets/GorodiskiGames/Survivalio/Plugins/Joystick/Joystick.prefab
+  uploadId: 832284

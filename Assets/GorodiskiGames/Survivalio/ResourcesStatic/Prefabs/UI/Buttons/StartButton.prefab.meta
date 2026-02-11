@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: d0b8938b5d1f249a2a38813446121b41
+PrefabImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 296168
+  packageName: Survival.io
+  packageVersion: 0.1.2
+  assetPath: Assets/GorodiskiGames/Survivalio/ResourcesStatic/Prefabs/UI/Buttons/StartButton.prefab
+  uploadId: 832284
