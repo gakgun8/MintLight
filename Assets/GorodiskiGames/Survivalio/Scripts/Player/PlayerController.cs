@@ -59,6 +59,7 @@ namespace Game.Player
 
         private readonly PlayerData _data;
         public Dictionary<ClothElementType, Mesh> ClothMeshMap;
+        public Dictionary<ClothElementType, GameObject> ClothPrefabMap;
 
         public int EquippedWeapon
         {
@@ -107,6 +108,7 @@ namespace Game.Player
 
             //health
             ClothMeshMap = new Dictionary<ClothElementType, Mesh>();
+            ClothPrefabMap = new Dictionary<ClothElementType, GameObject>();
             var health = config.Health;
             foreach (var serial in EquippedCloth)
             {
@@ -115,6 +117,7 @@ namespace Game.Player
                 var level = ClothLevels[serial];
                 var clothModel = new ClothModel(clothConfig, serial, level);
                 ClothMeshMap[clothModel.ClothType] = clothModel.Mesh;
+                ClothPrefabMap[clothModel.ClothType] = clothModel.Prefab;
                 health += (int)clothModel.Armor;
             }
 

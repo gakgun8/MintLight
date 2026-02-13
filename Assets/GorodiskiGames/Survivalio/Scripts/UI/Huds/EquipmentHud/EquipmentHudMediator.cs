@@ -165,6 +165,7 @@ namespace Game.UI.Hud
                 var clothModel = model as ClothModel;
 
                 _player.Model.ClothMeshMap[clothModel.ClothType] = clothModel.Mesh;
+                _player.Model.ClothPrefabMap[clothModel.ClothType] = clothModel.Prefab;
 
                 var type = UnitAttributeType.Health;
                 var value = _player.Model.GetAttribute(type);
@@ -205,6 +206,8 @@ namespace Game.UI.Hud
             else if(category == InventoryCategory.Cloth)
             {
                 var clothModel = model as ClothModel;
+                _player.Model.ClothMeshMap.Remove(clothModel.ClothType);
+                _player.Model.ClothPrefabMap.Remove(clothModel.ClothType);
 
                 var type = UnitAttributeType.Health;
                 var value = _player.Model.GetAttribute(type);

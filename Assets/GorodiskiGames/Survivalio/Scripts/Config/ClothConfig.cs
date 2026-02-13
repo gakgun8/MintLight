@@ -18,6 +18,6 @@ namespace Game.Config
     {
         public ClothElementType ClothType;
         public Mesh Mesh;
+        public GameObject Prefab;
     }
 }
-

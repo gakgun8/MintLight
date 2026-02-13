@@ -8,6 +8,7 @@ namespace Game.Cloth
     {
         public ClothElementType ClothType;
         public Mesh Mesh;
+        public GameObject Prefab;
 
         public float Armor => Attributes[AttributeType.Armor];
 
@@ -15,6 +16,7 @@ namespace Game.Cloth
         {
             ClothType = config.ClothType;
             Mesh = config.Mesh;
+            Prefab = config.Prefab;
 
             UpdateStats();
         }
@@ -30,4 +32,3 @@ namespace Game.Cloth
 
     }
 }
-
