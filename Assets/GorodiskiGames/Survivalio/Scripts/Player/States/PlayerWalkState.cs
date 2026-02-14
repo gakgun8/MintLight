@@ -4,10 +4,15 @@ namespace Game.Player.States
 {
     public sealed class PlayerWalkState : PlayerCheckCollisionState
     {
+        private const float StalledMoveDistanceEpsilon = 0.0001f;
+        private const float LargeUnscaledDeltaTimeThreshold = 0.05f;
+
         private float _walkSpeed;
         private float _rotateSpeed;
         private Vector2 _inputDirection;
         private Vector3 _moveDirection;
+        private int _lastMoveAppliedFrame;
+        private int _stalledMoveFrameCount;
 
         public override void Initialize()
         {
@@ -17,6 +22,9 @@ namespace Game.Player.States
             _walkSpeed = _player.Model.WalkSpeed;
 
             _player.View.Walk();
+
+            _lastMoveAppliedFrame = Time.frameCount;
+            _stalledMoveFrameCount = 0;
 
             _timer.TICK += OnTick;
         }
@@ -66,8 +74,52 @@ namespace Game.Player.States
 
         private void HandleMovement()
         {
+            var beforePosition = _player.View.Position;
             _moveDirection = new Vector3(_inputDirection.x, 0, _inputDirection.y);
             _player.View.Position += _moveDirection * _walkSpeed * Time.deltaTime;
+            DebugMoveTrace(beforePosition, _player.View.Position);
+        }
+
+        private void DebugMoveTrace(Vector3 beforePosition, Vector3 afterPosition)
+        {
+            var dPos = afterPosition - beforePosition;
+            var dPosMagnitude = dPos.magnitude;
+            var frameGap = Time.frameCount - _lastMoveAppliedFrame;
+            var dtUnscaled = Time.unscaledDeltaTime;
+            var hasInput = _gameView.Joystick.HasInput;
+            var hasLargeDtSpike = dtUnscaled >= LargeUnscaledDeltaTimeThreshold;
+            var hasLargeFrameGap = frameGap > 1;
+
+            if (hasInput && dPosMagnitude <= StalledMoveDistanceEpsilon)
+                _stalledMoveFrameCount++;
+            else
+                _stalledMoveFrameCount = 0;
+
+            var traceLevel = (hasLargeFrameGap || hasLargeDtSpike || _stalledMoveFrameCount >= 3)
+                ? "WARN"
+                : "TRACE";
+
+            Debug.Log($"[MoveTrace][{traceLevel}] frame={Time.frameCount} (+{frameGap}) dt={Time.deltaTime:F4} dtU={dtUnscaled:F4} " +
+                      $"hasInput={hasInput} inputMag={_inputDirection.magnitude:F3} moveDirMag={_moveDirection.magnitude:F3} " +
+                      $"dPos={dPos} dPosMag={dPosMagnitude:F6} speed={_walkSpeed:F3} pause={_isPause}");
+
+            if (_stalledMoveFrameCount >= 3)
+            {
+                var rootTransform = _player.View.transform;
+                var rootCollider = rootTransform.GetComponent<Collider>();
+                var characterController = rootTransform.GetComponent<CharacterController>();
+                var rigidbody = rootTransform.GetComponent<Rigidbody>();
+
+                Debug.LogWarning(
+                    "[MoveTrace][STALL] hasInput=True but dPos≈0 repeats. " +
+                     $"stalledFrames={_stalledMoveFrameCount} " +
+                    $"rootColliderEnabled={(rootCollider != null && rootCollider.enabled)} " +
+                    $"characterControllerEnabled={(characterController != null && characterController.enabled)} " +
+                    $"rigidbodyDetected={(rigidbody != null)} rigidbodyIsKinematic={(rigidbody != null && rigidbody.isKinematic)} " +
+                    $"rigidbodyConstraints={(rigidbody != null ? rigidbody.constraints.ToString() : "None")}");
+            }
+
+            _lastMoveAppliedFrame = Time.frameCount;
         }
 
         private void HandleRotation()
@@ -81,4 +133,3 @@ namespace Game.Player.States
         }
     }
 }
-
