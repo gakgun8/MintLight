@@ -115,7 +115,7 @@ namespace Game.Player
             ClothMeshMap = new Dictionary<ClothElementType, Mesh>();
             ClothPrefabMap = new Dictionary<ClothElementType, GameObject>();
             ClothAnimationControllerMap = new Dictionary<ClothElementType, AnimatorOverrideController>();
-            HasAllClothPrefabs = true;
+            HasAllClothPrefabs = false;
 
             foreach (var serial in EquippedCloth)
             {
@@ -124,10 +124,9 @@ namespace Game.Player
                 var level = ClothLevels[serial];
                 var clothModel = new ClothModel(clothConfig, serial, level);
                 ClothMeshMap[clothModel.ClothType] = clothModel.Mesh;
-            // Prefab도 같이 넣기 (clothConfig.Prefab에서 가져오는 방식이 가장 간단)
-                ClothPrefabMap[clothModel.ClothType] = clothConfig.Prefab;
+                // Cloth prefabs are not provided by ClothConfig in this project variant.
+                ClothPrefabMap[clothModel.ClothType] = null;
                 ClothAnimationControllerMap[clothModel.ClothType] = clothModel.AnimationOverride;
-                if (clothConfig.Prefab == null) HasAllClothPrefabs = false;
 
                 health += (int)clothModel.Armor;
             }
