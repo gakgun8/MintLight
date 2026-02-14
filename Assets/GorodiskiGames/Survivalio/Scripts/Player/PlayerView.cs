@@ -25,10 +25,22 @@ namespace Game.Player
 
         private Transform skeletonRoot;
         private GameObject _helmetObj, _vestObj, _uniformObj, _glovesObj, _shoesObj;
+        private GameObject _helmetPrefab, _vestPrefab, _uniformPrefab, _glovesPrefab, _shoesPrefab;
 
-        private void Awake()
+        protected override void Awake()
         {
+            base.Awake();
             skeletonRoot = animatorNode.Find("Bip001");
+        }
+
+
+        private void ReplacePartIfNeeded(ref GameObject slotObj, ref GameObject cachedPrefab, string slotName, GameObject prefab)
+        {
+            if (cachedPrefab == prefab)
+                return;
+
+            cachedPrefab = prefab;
+            ReplacePart(ref slotObj, slotName, prefab);
         }
 
         private void ReplacePart(ref GameObject slotObj, string slotName, GameObject prefab)
@@ -65,20 +77,20 @@ namespace Game.Player
 
             if (playerModel.ClothPrefabMap != null)
             {
-                if (playerModel.ClothPrefabMap.TryGetValue(ClothElementType.Helmet, out var helmetPrefab))
-                    ReplacePart(ref _helmetObj, "Helmet", helmetPrefab);
+                var helmetPrefab = playerModel.ClothPrefabMap.TryGetValue(ClothElementType.Helmet, out var helmetPrefabValue) ? helmetPrefabValue : null;
+                ReplacePartIfNeeded(ref _helmetObj, ref _helmetPrefab, "Helmet", helmetPrefab);
 
-                if (playerModel.ClothPrefabMap.TryGetValue(ClothElementType.Vest, out var vestPrefab))
-                    ReplacePart(ref _vestObj, "Vest", vestPrefab);
+                var vestPrefab = playerModel.ClothPrefabMap.TryGetValue(ClothElementType.Vest, out var vestPrefabValue) ? vestPrefabValue : null;
+                ReplacePartIfNeeded(ref _vestObj, ref _vestPrefab, "Vest", vestPrefab);
 
-                if (playerModel.ClothPrefabMap.TryGetValue(ClothElementType.Uniform, out var uniformPrefab))
-                    ReplacePart(ref _uniformObj, "Uniform", uniformPrefab);
+                var uniformPrefab = playerModel.ClothPrefabMap.TryGetValue(ClothElementType.Uniform, out var uniformPrefabValue) ? uniformPrefabValue : null;
+                ReplacePartIfNeeded(ref _uniformObj, ref _uniformPrefab, "Uniform", uniformPrefab);
 
-                if (playerModel.ClothPrefabMap.TryGetValue(ClothElementType.Gloves, out var glovesPrefab))
-                    ReplacePart(ref _glovesObj, "Gloves", glovesPrefab);
+                var glovesPrefab = playerModel.ClothPrefabMap.TryGetValue(ClothElementType.Gloves, out var glovesPrefabValue) ? glovesPrefabValue : null;
+                ReplacePartIfNeeded(ref _glovesObj, ref _glovesPrefab, "Gloves", glovesPrefab);
 
-                if (playerModel.ClothPrefabMap.TryGetValue(ClothElementType.Shoes, out var shoesPrefab))
-                    ReplacePart(ref _shoesObj, "Shoes", shoesPrefab);
+                var shoesPrefab = playerModel.ClothPrefabMap.TryGetValue(ClothElementType.Shoes, out var shoesPrefabValue) ? shoesPrefabValue : null;
+                ReplacePartIfNeeded(ref _shoesObj, ref _shoesPrefab, "Shoes", shoesPrefab);
             }
         }
 
