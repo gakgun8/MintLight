@@ -60,6 +60,7 @@ namespace Game.Player
         private readonly PlayerData _data;
         public Dictionary<ClothElementType, Mesh> ClothMeshMap;
         public Dictionary<ClothElementType, GameObject> ClothPrefabMap;
+        public Dictionary<ClothElementType, AnimatorOverrideController> ClothAnimationControllerMap;
         public bool HasAllClothPrefabs;
 
 
@@ -113,6 +114,7 @@ namespace Game.Player
             var health = config.Health;
             ClothMeshMap = new Dictionary<ClothElementType, Mesh>();
             ClothPrefabMap = new Dictionary<ClothElementType, GameObject>();
+            ClothAnimationControllerMap = new Dictionary<ClothElementType, AnimatorOverrideController>();
             HasAllClothPrefabs = true;
 
             foreach (var serial in EquippedCloth)
@@ -124,6 +126,7 @@ namespace Game.Player
                 ClothMeshMap[clothModel.ClothType] = clothModel.Mesh;
             // Prefab도 같이 넣기 (clothConfig.Prefab에서 가져오는 방식이 가장 간단)
                 ClothPrefabMap[clothModel.ClothType] = clothConfig.Prefab;
+                ClothAnimationControllerMap[clothModel.ClothType] = clothModel.AnimationOverride;
                 if (clothConfig.Prefab == null) HasAllClothPrefabs = false;
 
                 health += (int)clothModel.Armor;
@@ -136,6 +139,27 @@ namespace Game.Player
         public void Save()
         {
             _data.Save();
+        }
+
+        public void SetClothAnimationController(ClothElementType clothType, AnimatorOverrideController animationOverride)
+        {
+            ClothAnimationControllerMap[clothType] = animationOverride;
+        }
+
+        public void RemoveClothAnimationController(ClothElementType clothType)
+        {
+            ClothAnimationControllerMap.Remove(clothType);
+        }
+
+        public AnimatorOverrideController GetCurrentClothAnimationController()
+        {
+            foreach (var animationOverride in ClothAnimationControllerMap.Values)
+            {
+                if (animationOverride != null)
+                    return animationOverride;
+            }
+
+            return null;
         }
     }
 
