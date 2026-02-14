@@ -4,6 +4,8 @@ namespace Game.Player.States
 {
     public sealed class PlayerWalkState : PlayerCheckCollisionState
     {
+        private const float _inputDeadZone = 0.1f;
+
         private float _walkSpeed;
         private float _rotateSpeed;
         private Vector2 _inputDirection;
@@ -40,6 +42,13 @@ namespace Game.Player.States
             }
 
             HandleInput();
+
+            if (_inputDirection == Vector2.zero)
+            {
+                _player.Idle();
+                return;
+            }
+
             HandleMovement();
             HandleRotation();
             HandleBarsPosition();
@@ -58,10 +67,12 @@ namespace Game.Player.States
 
         private void HandleInput()
         {
-            _inputDirection.x = _gameView.Joystick.Horizontal;
-            _inputDirection.y = _gameView.Joystick.Vertical;
+            var input = new Vector2(_gameView.Joystick.Horizontal, _gameView.Joystick.Vertical);
 
-            _inputDirection = _inputDirection.normalized;
+            if (input.magnitude < _inputDeadZone)
+                _inputDirection = Vector2.zero;
+            else
+                _inputDirection = input.normalized;
         }
 
         private void HandleMovement()
@@ -81,4 +92,3 @@ namespace Game.Player.States
         }
     }
 }
-
