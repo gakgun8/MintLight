@@ -2,8 +2,8 @@ using System.Collections.Generic;
 using Game.Config;
 using Game.Player;
 using UnityEngine;
-using UnityEngine.UI;
 using UnityEngine.EventSystems;
+using UnityEngine.UI;
 
 namespace Game.UI.Hud
 {
@@ -26,8 +26,7 @@ namespace Game.UI.Hud
 
         public event System.Action<float> ON_CHARACTER_DRAG;
 
-        private EventTrigger _dragEventTrigger;
-        private bool _isCharacterDragging;
+        private CharacterDragInputView _characterDragInput;
 
         public RawImage RawImage => _rawImage;
         public RectTransform Content => _content;
@@ -48,20 +47,21 @@ namespace Game.UI.Hud
             ClothCellsMap[ClothElementType.Uniform] = _clothUniformCell;
             ClothCellsMap[ClothElementType.Shoes] = _clothShoesCell;
 
-            _dragEventTrigger = _rawImage.GetComponent<EventTrigger>();
-            if (_dragEventTrigger == null)
-                _dragEventTrigger = _rawImage.gameObject.AddComponent<EventTrigger>();
+            _rawImage.raycastTarget = true;
 
-            RegisterDragEvents();
+            _characterDragInput = _rawImage.GetComponent<CharacterDragInputView>();
+            if (_characterDragInput == null)
+                _characterDragInput = _rawImage.gameObject.AddComponent<CharacterDragInputView>();
+
+            _characterDragInput.ON_DRAG = OnCharacterDrag;
         }
 
         protected override void OnDisable()
         {
-            if (_dragEventTrigger != null)
-                _dragEventTrigger.triggers.Clear();
+            if (_characterDragInput != null)
+                _characterDragInput.ON_DRAG = null;
 
             ClothCellsMap.Clear();
-            _isCharacterDragging = false;
         }
 
         protected override void OnModelChanged(PlayerModel model)
@@ -70,44 +70,34 @@ namespace Game.UI.Hud
             _healthAttribute.SetValue(model.GetAttribute(UnitAttributeType.Health));
         }
 
-        private void RegisterDragEvents()
+        private void OnCharacterDrag(float deltaX)
         {
-            _dragEventTrigger.triggers.Clear();
+            ON_CHARACTER_DRAG?.Invoke(-deltaX * _dragSensitivity);
+        }
+    }
 
-            AddDragEvent(EventTriggerType.PointerDown, data =>
-            {
-                var pointerEventData = data as PointerEventData;
-                _isCharacterDragging = IsPointerOnCharacter(pointerEventData);
-            });
+    public sealed class CharacterDragInputView : MonoBehaviour, IPointerDownHandler, IPointerUpHandler, IDragHandler
+    {
+        public System.Action<float> ON_DRAG;
 
-            AddDragEvent(EventTriggerType.PointerUp, _ => _isCharacterDragging = false);
+        private bool _isDragging;
 
-            AddDragEvent(EventTriggerType.Drag, data =>
-            {
-                if (!_isCharacterDragging)
-                    return;
-
-                var pointerEventData = data as PointerEventData;
-                if (pointerEventData == null)
-                    return;
-
-                ON_CHARACTER_DRAG?.Invoke(-pointerEventData.delta.x * _dragSensitivity);
-            });
+        public void OnPointerDown(PointerEventData eventData)
+        {
+            _isDragging = true;
         }
 
-        private void AddDragEvent(EventTriggerType type, System.Action<BaseEventData> callback)
+        public void OnPointerUp(PointerEventData eventData)
         {
-            var entry = new EventTrigger.Entry { eventID = type };
-            entry.callback.AddListener(data => callback(data));
-            _dragEventTrigger.triggers.Add(entry);
+            _isDragging = false;
         }
 
-        private bool IsPointerOnCharacter(PointerEventData eventData)
+        public void OnDrag(PointerEventData eventData)
         {
-            if (eventData == null)
-                return false;
+            if (!_isDragging || eventData == null)
+                return;
 
-            return RectTransformUtility.RectangleContainsScreenPoint(_rawImage.rectTransform, eventData.position, eventData.pressEventCamera);
+            ON_DRAG?.Invoke(eventData.delta.x);
         }
     }
 }
