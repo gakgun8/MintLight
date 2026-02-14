@@ -55,7 +55,7 @@ namespace Game.Unit
             set { _rotateNode.rotation = value; }
         }
 
-        protected virtual void Awake()
+        private void Awake()
         {
             if (_animator == null)
                 _animator = GetComponentInChildren<Animator>(true);
