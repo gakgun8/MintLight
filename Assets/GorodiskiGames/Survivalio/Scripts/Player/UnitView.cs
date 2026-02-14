@@ -134,7 +134,13 @@ namespace Game.Unit
             var nameHash = Animator.StringToHash(animationState.ToString());
             _animator.PlayInFixedTime(nameHash, 0, timeValue);
 
-            _animator.Update(0);
+            if (ShouldForceImmediateAnimatorUpdate(animationState))
+                _animator.Update(0);
+        }
+
+        protected virtual bool ShouldForceImmediateAnimatorUpdate(AnimatorStateType animationState)
+        {
+            return true;
         }
 
 

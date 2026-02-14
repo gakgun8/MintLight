@@ -17,6 +17,14 @@ namespace Game.Enemy
 
         }
 
+        protected override bool ShouldForceImmediateAnimatorUpdate(AnimatorStateType animationState)
+        {
+            // Enemy spawn can happen in bursts, so avoid forcing synchronous animator evaluation
+            // on every Walk/Idle transition. Keep immediate update for Die to preserve
+            // GetCurrentStateLength usage in EnemyDieState.
+            return animationState == AnimatorStateType.Die;
+        }
+
         public void PlayEffect(bool isPlay)
         {
             if(_effect == null)
@@ -29,4 +37,3 @@ namespace Game.Enemy
         }
     }
 }
-
