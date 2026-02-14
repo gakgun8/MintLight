@@ -4,13 +4,10 @@ namespace Game.Player.States
 {
     public sealed class PlayerWalkState : PlayerCheckCollisionState
     {
-        private const float _inputLogInterval = 0.15f;
-
         private float _walkSpeed;
         private float _rotateSpeed;
         private Vector2 _inputDirection;
         private Vector3 _moveDirection;
-        private float _nextInputLogTime;
 
         public override void Initialize()
         {
@@ -65,14 +62,6 @@ namespace Game.Player.States
             _inputDirection.y = _gameView.Joystick.Vertical;
 
             _inputDirection = _inputDirection.normalized;
-
-#if UNITY_EDITOR
-            if (Time.unscaledTime >= _nextInputLogTime)
-            {
-                _nextInputLogTime = Time.unscaledTime + _inputLogInterval;
-                Debug.Log($"[PlayerWalkState] final moveInput=({_inputDirection.x:F3},{_inputDirection.y:F3}) mag={_inputDirection.magnitude:F3} hasInput={_gameView.Joystick.HasInput}");
-            }
-#endif
         }
 
         private void HandleMovement()
@@ -92,3 +81,4 @@ namespace Game.Player.States
         }
     }
 }
+

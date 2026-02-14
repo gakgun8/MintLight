@@ -1,4 +1,5 @@
 ﻿using System;
+using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
@@ -12,18 +13,19 @@ namespace Game.Controls
 
         private const float _maxRadius = 125f;
         private const float _fadeSpeed = 4f;
+        private const float _keyboardInputSmoothSpeed = 3f;
+
         [SerializeField] private RectTransform _background, _handle;
         [SerializeField] private CanvasGroup _canvasGroup;
 
         [SerializeField] private float swipeSpeedThresholdNormalized = 0.8f;
         [SerializeField] private float upwardAngleThreshold = 0.7f;
-        [SerializeField] private float inputDeadZone = 0.05f;
-        [SerializeField] private bool enableInputDebugLogs;
 
         [HideInInspector] public bool HasInput;
         [HideInInspector] public float Horizontal, Vertical;
 
         private Vector2 _inputDirection = Vector2.zero;
+        private bool _firstTouchTriggered;
         private bool _isPointerDown;
         private float _targetAlpha;
         private bool _visibility;
@@ -33,8 +35,6 @@ namespace Game.Controls
 
         private Vector2 _latestVelocity;
         private float _latestSpeedNormalized;
-        private int _activePointerId = -1;
-        private float _nextDebugLogTime;
 
         private void Awake()
         {
@@ -45,8 +45,6 @@ namespace Game.Controls
         private void OnDisable()
         {
             HasInput = false;
-            _isPointerDown = false;
-            _activePointerId = -1;
         }
 
         public void OnPointerDown(PointerEventData eventData)
@@ -55,7 +53,6 @@ namespace Game.Controls
             return; // disable touch joystick on PC/Mac builds
 #endif
             _isPointerDown = true;
-            _activePointerId = eventData.pointerId;
             _background.position = eventData.position;
 
             _lastPosition = eventData.position;
@@ -65,7 +62,9 @@ namespace Game.Controls
 
             SetTargetAlpha(1f);
             FireInput();
-            UpdatePointerInput(eventData.position, "OnPointerDown");
+            OnDrag(eventData);
+
+            HasInput = true;
         }
 
         public void OnDrag(PointerEventData eventData)
@@ -73,10 +72,16 @@ namespace Game.Controls
 #if UNITY_STANDALONE || UNITY_WEBGL
             return;
 #endif
-            if (!_isPointerDown || eventData.pointerId != _activePointerId)
-                return;
+            Vector2 position = RectTransformUtility.WorldToScreenPoint(null, _background.position);
+            Vector2 radius = new Vector2(_maxRadius, _maxRadius);
 
-            UpdatePointerInput(eventData.position, "OnDrag");
+            _inputDirection = (eventData.position - position) / radius;
+            _inputDirection = _inputDirection.magnitude > 1f ? _inputDirection.normalized : _inputDirection;
+
+            SetHandlePosition(_inputDirection * _maxRadius);
+
+            Horizontal = _inputDirection.x;
+            Vertical = _inputDirection.y;
 
             Vector2 currentPosition = eventData.position;
             float currentTime = Time.unscaledTime;
@@ -100,20 +105,24 @@ namespace Game.Controls
 #if UNITY_STANDALONE || UNITY_WEBGL
             return;
 #endif
-            if (eventData.pointerId != _activePointerId)
-                return;
-
             if (_latestSpeedNormalized > swipeSpeedThresholdNormalized && _latestVelocity.y > Mathf.Abs(_latestVelocity.x) && _latestVelocity.normalized.y > upwardAngleThreshold)
             {
                 FireJump();
             }
 
-            ResetInputState("OnPointerUp");
+            HasInput = false;
+            _isPointerDown = false;
+            _inputDirection = Vector2.zero;
+            Horizontal = 0f;
+            Vertical = 0f;
+            SetHandlePosition(Vector2.zero);
             SetTargetAlpha(0f);
 
             _latestSpeedNormalized = 0;
             _latestVelocity = Vector2.zero;
         }
+
+        private Vector2 _smoothInput;
 
         private void Update()
         {
@@ -154,79 +163,7 @@ namespace Game.Controls
     (Gamepad.current != null && Gamepad.current.buttonSouth.wasPressedThisFrame))
                 FireJump();
 
-#else
-            if (_isPointerDown)
-                UpdatePointerInputFromTouchscreen();
-
 #endif
-        }
-
-        private void UpdatePointerInputFromTouchscreen()
-        {
-            if (Touchscreen.current == null)
-                return;
-
-            var touches = Touchscreen.current.touches;
-            bool foundTouch = false;
-
-            for (int i = 0; i < touches.Count; i++)
-            {
-                var touch = touches[i];
-                if (!touch.press.isPressed)
-                    continue;
-
-                if (touch.touchId.ReadValue() != _activePointerId)
-                    continue;
-
-                foundTouch = true;
-                UpdatePointerInput(touch.position.ReadValue(), "Update.Touchscreen");
-                break;
-            }
-
-            if (!foundTouch)
-                ResetInputState("Update.TouchNotFound");
-        }
-
-        private void UpdatePointerInput(Vector2 pointerPosition, string source)
-        {
-            Vector2 centerPosition = RectTransformUtility.WorldToScreenPoint(null, _background.position);
-            Vector2 radius = new Vector2(_maxRadius, _maxRadius);
-
-            _inputDirection = (pointerPosition - centerPosition) / radius;
-            _inputDirection = _inputDirection.magnitude > 1f ? _inputDirection.normalized : _inputDirection;
-
-            if (_inputDirection.magnitude < inputDeadZone)
-                _inputDirection = Vector2.zero;
-
-            SetHandlePosition(_inputDirection * _maxRadius);
-
-            Horizontal = _inputDirection.x;
-            Vertical = _inputDirection.y;
-            HasInput = _inputDirection != Vector2.zero;
-
-            LogInputState(source);
-        }
-
-        private void ResetInputState(string source)
-        {
-            HasInput = false;
-            _isPointerDown = false;
-            _activePointerId = -1;
-            _inputDirection = Vector2.zero;
-            Horizontal = 0f;
-            Vertical = 0f;
-            SetHandlePosition(Vector2.zero);
-
-            LogInputState(source);
-        }
-
-        private void LogInputState(string source)
-        {
-            if (!enableInputDebugLogs || Time.unscaledTime < _nextDebugLogTime)
-                return;
-
-            _nextDebugLogTime = Time.unscaledTime + 0.15f;
-            Debug.Log($"[Joystick] {source} | vec=({_inputDirection.x:F3},{_inputDirection.y:F3}) mag={_inputDirection.magnitude:F3} hasInput={HasInput} pointerDown={_isPointerDown} pointerId={_activePointerId}");
         }
 
         private void FireJump() => ON_JUMP?.Invoke();
