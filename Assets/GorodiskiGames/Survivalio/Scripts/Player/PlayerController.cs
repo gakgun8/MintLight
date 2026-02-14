@@ -59,6 +59,7 @@ namespace Game.Player
 
         private readonly PlayerData _data;
         public Dictionary<ClothElementType, Mesh> ClothMeshMap;
+        public Dictionary<ClothElementType, AnimatorOverrideController> ClothAnimationMap;
 
         public int EquippedWeapon
         {
@@ -107,6 +108,7 @@ namespace Game.Player
 
             //health
             ClothMeshMap = new Dictionary<ClothElementType, Mesh>();
+            ClothAnimationMap = new Dictionary<ClothElementType, AnimatorOverrideController>();
             var health = config.Health;
             foreach (var serial in EquippedCloth)
             {
@@ -115,11 +117,46 @@ namespace Game.Player
                 var level = ClothLevels[serial];
                 var clothModel = new ClothModel(clothConfig, serial, level);
                 ClothMeshMap[clothModel.ClothType] = clothModel.Mesh;
+                ClothAnimationMap[clothModel.ClothType] = clothModel.AnimationOverride;
                 health += (int)clothModel.Armor;
             }
 
             SetAttribute(UnitAttributeType.Health, health);
             UpdateNominalHealth(health);
+        }
+
+
+        public AnimatorOverrideController GetCurrentClothAnimationController()
+        {
+            var priority = new[]
+            {
+                ClothElementType.Uniform,
+                ClothElementType.Helmet,
+                ClothElementType.Vest,
+                ClothElementType.Gloves,
+                ClothElementType.Shoes
+            };
+
+            foreach (var clothType in priority)
+            {
+                if (!ClothAnimationMap.TryGetValue(clothType, out var animationOverride))
+                    continue;
+
+                if (animationOverride != null)
+                    return animationOverride;
+            }
+
+            return null;
+        }
+
+        public void SetClothAnimationController(ClothElementType clothType, AnimatorOverrideController animationOverride)
+        {
+            ClothAnimationMap[clothType] = animationOverride;
+        }
+
+        public void RemoveClothAnimationController(ClothElementType clothType)
+        {
+            ClothAnimationMap.Remove(clothType);
         }
 
         public void Save()
