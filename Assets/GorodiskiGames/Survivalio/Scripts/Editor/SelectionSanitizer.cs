@@ -124,7 +124,7 @@ namespace Game.Editor
 
         private static EditorWindow[] GetAllInspectorWindows()
         {
-            var inspectorWindowType = typeof(Editor).Assembly.GetType("UnityEditor.InspectorWindow");
+            var inspectorWindowType = typeof(UnityEditor.Editor).Assembly.GetType("UnityEditor.InspectorWindow");
             if (inspectorWindowType == null)
                 return Array.Empty<EditorWindow>();
 
@@ -135,7 +135,7 @@ namespace Game.Editor
 
         private static void InternalEditorUtilityRepaintAllViews()
         {
-            var internalEditorUtilityType = typeof(Editor).Assembly.GetType("UnityEditorInternal.InternalEditorUtility");
+            var internalEditorUtilityType = typeof(UnityEditor.Editor).Assembly.GetType("UnityEditorInternal.InternalEditorUtility");
             var repaintAllViewsMethod = internalEditorUtilityType?.GetMethod("RepaintAllViews", BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
             repaintAllViewsMethod?.Invoke(null, null);
         }
