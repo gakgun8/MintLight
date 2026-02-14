@@ -12,6 +12,12 @@ namespace Game
         [SerializeField] private Camera _camera;
         [SerializeField] private float _distance;
         [SerializeField] private float _sensitivity = 10f;
+        [Header("Zoom")]
+        [SerializeField] private bool _enableZoom = true;
+        [SerializeField] private float _minFieldOfView = 20f;
+        [SerializeField] private float _maxFieldOfView = 70f;
+        [SerializeField] private float _mouseScrollZoomSensitivity = 10f;
+        [SerializeField] private float _pinchZoomSensitivity = 0.05f;
 
         public Camera Camera => _camera;
 
@@ -44,6 +50,51 @@ namespace Game
                 return;
 
             transform.position = Vector3.Lerp(transform.position, _target.position + _target.forward * _distance, Time.deltaTime * _sensitivity);
+
+            HandleZoom();
+        }
+
+        private void HandleZoom()
+        {
+            if (!_enableZoom || _camera == null)
+                return;
+
+            HandleMouseZoom();
+            HandlePinchZoom();
+        }
+
+        private void HandleMouseZoom()
+        {
+            var scrollDelta = Input.mouseScrollDelta.y;
+            if (Mathf.Approximately(scrollDelta, 0f))
+                return;
+
+            var zoomDelta = -scrollDelta * _mouseScrollZoomSensitivity;
+            SetFieldOfView(_camera.fieldOfView + zoomDelta);
+        }
+
+        private void HandlePinchZoom()
+        {
+            if (Input.touchCount != 2)
+                return;
+
+            var firstTouch = Input.GetTouch(0);
+            var secondTouch = Input.GetTouch(1);
+
+            var firstTouchPreviousPosition = firstTouch.position - firstTouch.deltaPosition;
+            var secondTouchPreviousPosition = secondTouch.position - secondTouch.deltaPosition;
+
+            var previousDistance = Vector2.Distance(firstTouchPreviousPosition, secondTouchPreviousPosition);
+            var currentDistance = Vector2.Distance(firstTouch.position, secondTouch.position);
+            var pinchDelta = currentDistance - previousDistance;
+
+            var zoomDelta = -pinchDelta * _pinchZoomSensitivity;
+            SetFieldOfView(_camera.fieldOfView + zoomDelta);
+        }
+
+        private void SetFieldOfView(float value)
+        {
+            _camera.fieldOfView = Mathf.Clamp(value, _minFieldOfView, _maxFieldOfView);
         }
 
         public void Shake()
@@ -64,4 +115,3 @@ namespace Game
         }
     }
 }
-
