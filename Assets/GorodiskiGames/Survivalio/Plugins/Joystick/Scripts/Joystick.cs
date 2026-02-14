@@ -72,16 +72,7 @@ namespace Game.Controls
 #if UNITY_STANDALONE || UNITY_WEBGL
             return;
 #endif
-            Vector2 position = RectTransformUtility.WorldToScreenPoint(null, _background.position);
-            Vector2 radius = new Vector2(_maxRadius, _maxRadius);
-
-            _inputDirection = (eventData.position - position) / radius;
-            _inputDirection = _inputDirection.magnitude > 1f ? _inputDirection.normalized : _inputDirection;
-
-            SetHandlePosition(_inputDirection * _maxRadius);
-
-            Horizontal = _inputDirection.x;
-            Vertical = _inputDirection.y;
+            UpdatePointerInputFromScreenPosition(eventData.position);
 
             Vector2 currentPosition = eventData.position;
             float currentTime = Time.unscaledTime;
@@ -98,6 +89,21 @@ namespace Game.Controls
 
             _lastPosition = currentPosition;
             _lastTime = currentTime;
+        }
+
+        private void UpdatePointerInputFromScreenPosition(Vector2 screenPosition)
+        {
+            Vector2 position = RectTransformUtility.WorldToScreenPoint(null, _background.position);
+            Vector2 radius = new Vector2(_maxRadius, _maxRadius);
+
+            _inputDirection = (screenPosition - position) / radius;
+            _inputDirection = _inputDirection.magnitude > 1f ? _inputDirection.normalized : _inputDirection;
+
+            SetHandlePosition(_inputDirection * _maxRadius);
+
+            Horizontal = _inputDirection.x;
+            Vertical = _inputDirection.y;
+            HasInput = _inputDirection.sqrMagnitude > 0f;
         }
 
         public void OnPointerUp(PointerEventData eventData)
@@ -128,28 +134,27 @@ namespace Game.Controls
         {
             SetCanvasAlpha(Mathf.MoveTowards(_canvasGroup.alpha, _targetAlpha, Time.deltaTime * _fadeSpeed));
 
+            if (_isPointerDown)
+            {
+                UpdatePointerInputFromScreenPosition(Input.mousePosition);
+                FireInput();
+            }
+
 #if UNITY_EDITOR || UNITY_STANDALONE || UNITY_WEBGL
             Vector2 moveInput = Vector2.zero;
 
             // Keyboard
             float x = Input.GetAxis("Horizontal");
             float y = Input.GetAxis("Vertical");
-
             moveInput = new Vector2(x, y);
 
             // Gamepad
             if (Gamepad.current != null)
                 moveInput += Gamepad.current.leftStick.ReadValue();
 
-            if (moveInput == Vector2.zero && !_isPointerDown)
-            {
-                HasInput = false;
-                _inputDirection = Vector2.zero;
-                Horizontal = 0f;
-                Vertical = 0f;
-                _handle.anchoredPosition = Vector2.zero;
-            }
-            else
+            var hasKeyboardOrGamepadInput = moveInput.sqrMagnitude > 0f;
+
+            if (hasKeyboardOrGamepadInput)
             {
                 FireInput();
                 HasInput = true;
@@ -158,11 +163,18 @@ namespace Game.Controls
                 Vertical = _inputDirection.y;
                 SetHandlePosition(_inputDirection * _maxRadius);
             }
+            else if (!_isPointerDown)
+            {
+                HasInput = false;
+                _inputDirection = Vector2.zero;
+                Horizontal = 0f;
+                Vertical = 0f;
+                _handle.anchoredPosition = Vector2.zero;
+            }
 
             if ((Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame) ||
-    (Gamepad.current != null && Gamepad.current.buttonSouth.wasPressedThisFrame))
+                (Gamepad.current != null && Gamepad.current.buttonSouth.wasPressedThisFrame))
                 FireJump();
-
 #endif
         }
 
