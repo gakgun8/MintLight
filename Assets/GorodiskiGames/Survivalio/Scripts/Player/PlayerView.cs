@@ -26,8 +26,9 @@ namespace Game.Player
         private Transform skeletonRoot;
         private GameObject _helmetObj, _vestObj, _uniformObj, _glovesObj, _shoesObj;
 
-        private void Awake()
+        protected override void Awake()
         {
+            base.Awake();
             skeletonRoot = animatorNode.Find("Bip001");
         }
 
