@@ -34,6 +34,9 @@ namespace Game.Unit
 
         private Material[] _materials;
         private RuntimeAnimatorController _defaultRuntimeAnimatorController;
+        private AnimatorCullingMode _defaultCullingMode;
+        private AnimatorUpdateMode _defaultUpdateMode;
+        private float _defaultAnimatorSpeed = 1f;
         private Coroutine _blinkCoroutine;
         private static readonly int BlinkAmountShaderProperty = Shader.PropertyToID("_BlinkAmount");
 
@@ -76,7 +79,12 @@ namespace Game.Unit
                 _renderers = GetComponentsInChildren<Renderer>(true);
 
             if (_animator != null)
+            {
                 _defaultRuntimeAnimatorController = _animator.runtimeAnimatorController;
+                _defaultCullingMode = _animator.cullingMode;
+                _defaultUpdateMode = _animator.updateMode;
+                _defaultAnimatorSpeed = _animator.speed;
+            }
 
             CacheMaterials();
 
@@ -135,7 +143,18 @@ namespace Game.Unit
             if (_animator == null)
                 return;
 
-            _animator.updateMode = value ? AnimatorUpdateMode.UnscaledTime : AnimatorUpdateMode.Normal;
+            _animator.updateMode = value ? AnimatorUpdateMode.UnscaledTime : _defaultUpdateMode;
+            _animator.cullingMode = value ? AnimatorCullingMode.AlwaysAnimate : _defaultCullingMode;
+            _animator.speed = _defaultAnimatorSpeed;
+        }
+
+        public void InitializeAnimationBinding(AnimatorOverrideController animationOverride, bool menuPreviewMode)
+        {
+            if (_animator == null)
+                return;
+
+            SetMenuPreviewMode(menuPreviewMode);
+            ApplyAnimationOverride(animationOverride);
         }
 
         public void ApplyAnimationOverride(AnimatorOverrideController animationOverride)
@@ -150,6 +169,7 @@ namespace Game.Unit
                 ? _defaultRuntimeAnimatorController
                 : animationOverride;
 
+            _animator.Rebind();
             _animator.Update(0f);
         }
 

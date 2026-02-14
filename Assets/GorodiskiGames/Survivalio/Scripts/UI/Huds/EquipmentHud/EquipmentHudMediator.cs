@@ -37,8 +37,7 @@ namespace Game.UI.Hud
             _player = _menuManager.Player;
             _player.View.Position = _rawCamera.AnchorToWorldPosition(0.5f, _anchorPositionY);
             _player.View.Rotation = Quaternion.Euler(0f, _rotationY, 0f);
-            _player.View.SetMenuPreviewMode(true);
-            _player.View.ApplyAnimationOverride(_player.Model.GetCurrentClothAnimationController());
+            _player.View.InitializeAnimationBinding(_player.Model.GetCurrentClothAnimationController(), true);
             _player.IdleMenu();
 
             var prefab = _resourcesManager.LoadInventorySlot();
@@ -255,4 +254,3 @@ namespace Game.UI.Hud
         }
     }
 }
-

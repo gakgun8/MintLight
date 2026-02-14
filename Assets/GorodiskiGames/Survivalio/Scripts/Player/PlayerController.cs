@@ -200,6 +200,7 @@ namespace Game.Player
             injector.Inject(_stateManager);
 
             _view.Model = model;
+            _view.InitializeAnimationBinding(_model.GetCurrentClothAnimationController(), false);
             Visibility(true);
             _view.SetCollider(true);
         }
