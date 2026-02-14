@@ -91,11 +91,13 @@ namespace Game.UI.Hud
             SetContentSize();
 
             _menuManager.ON_EQUIP += OnEquip;
+            _view.ON_CHARACTER_DRAG += OnCharacterDrag;
         }
 
         protected override void Hide()
         {
             _menuManager.ON_EQUIP -= OnEquip;
+            _view.ON_CHARACTER_DRAG -= OnCharacterDrag;
 
             foreach (var slot in _slotsMap.Values)
             {
@@ -107,6 +109,14 @@ namespace Game.UI.Hud
             _player.View.SetMenuPreviewMode(false);
 
             Object.Destroy(_rawCamera.gameObject);
+        }
+
+
+        private void OnCharacterDrag(float rotationDeltaY)
+        {
+            var rotation = _player.View.Rotation.eulerAngles;
+            rotation.y += rotationDeltaY;
+            _player.View.Rotation = Quaternion.Euler(0f, rotation.y, 0f);
         }
 
         private void OnEquip(EquipmentModel candidateModel)
