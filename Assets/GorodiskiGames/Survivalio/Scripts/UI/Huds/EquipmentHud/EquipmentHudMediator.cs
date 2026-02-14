@@ -37,6 +37,8 @@ namespace Game.UI.Hud
             _player = _menuManager.Player;
             _player.View.Position = _rawCamera.AnchorToWorldPosition(0.5f, _anchorPositionY);
             _player.View.Rotation = Quaternion.Euler(0f, _rotationY, 0f);
+            _player.View.SetMenuPreviewMode(true);
+            _player.View.ApplyAnimationOverride(_player.Model.GetCurrentClothAnimationController());
             _player.IdleMenu();
 
             var prefab = _resourcesManager.LoadInventorySlot();
@@ -103,6 +105,8 @@ namespace Game.UI.Hud
             }
             _slotsMap.Clear();
 
+            _player.View.SetMenuPreviewMode(false);
+
             Object.Destroy(_rawCamera.gameObject);
         }
 
@@ -165,6 +169,7 @@ namespace Game.UI.Hud
                 var clothModel = model as ClothModel;
 
                 _player.Model.ClothMeshMap[clothModel.ClothType] = clothModel.Mesh;
+                _player.Model.SetClothAnimationController(clothModel.ClothType, clothModel.AnimationOverride);
 
                 var type = UnitAttributeType.Health;
                 var value = _player.Model.GetAttribute(type);
@@ -179,6 +184,7 @@ namespace Game.UI.Hud
                 var clothType = clothModel.ClothType;
                 parent = _view.ClothCellsMap[clothType];
 
+                _menuManager.Player.View.ApplyAnimationOverride(_player.Model.GetCurrentClothAnimationController());
                 _menuManager.Player.ChangeCloth();
             }
 
@@ -215,11 +221,15 @@ namespace Game.UI.Hud
 
                 var serial = model.Serial;
                 _player.Model.EquippedCloth.Remove(serial);
+                _player.Model.RemoveClothAnimationController(clothModel.ClothType);
                 _player.Model.Save();
                 _player.Model.SetChanged();
             }
 
             model.IsEquipped = false;
+
+            if (category == InventoryCategory.Cloth)
+                _player.View.ApplyAnimationOverride(_player.Model.GetCurrentClothAnimationController());
 
             var slot = _slotsMap[model];
             slot.SetParent(_view.Content);
