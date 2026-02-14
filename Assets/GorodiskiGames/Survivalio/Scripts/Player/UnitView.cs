@@ -55,7 +55,7 @@ namespace Game.Unit
             set { _rotateNode.rotation = value; }
         }
 
-        private void Awake()
+        protected virtual void Awake()
         {
             if (_animator == null)
                 _animator = GetComponentInChildren<Animator>(true);
@@ -142,6 +142,9 @@ namespace Game.Unit
         {
             if (_animator == null)
                 return;
+
+            if (_defaultRuntimeAnimatorController == null)
+                _defaultRuntimeAnimatorController = _animator.runtimeAnimatorController;
 
             _animator.runtimeAnimatorController = animationOverride == null
                 ? _defaultRuntimeAnimatorController
