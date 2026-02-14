@@ -34,6 +34,7 @@ namespace Game.Unit
 
         private Material[] _materials;
         private RuntimeAnimatorController _defaultRuntimeAnimatorController;
+        private static readonly int BlinkAmountShaderProperty = Shader.PropertyToID("_BlinkAmount");
 
         public Vector3 Position
         {
@@ -148,11 +149,21 @@ namespace Game.Unit
 
         public void Damage(float blinkDuration)
         {
+            if (_materials == null || _materials.Length == 0)
+                return;
+
             StartCoroutine(BlinkCoroutine(blinkDuration));
         }
 
         private IEnumerator BlinkCoroutine(float blinkDuration)
         {
+            if (blinkDuration <= 0f)
+            {
+                SetBlinkAmount(1f);
+                SetBlinkAmount(0f);
+                yield break;
+            }
+
             float halfDuration = blinkDuration * 0.5f;
             for (float t = 0; t < halfDuration; t += Time.deltaTime)
             {
@@ -176,11 +187,16 @@ namespace Game.Unit
 
         private void SetBlinkAmount(float value)
         {
+            if (_materials == null)
+                return;
+
             foreach (var mat in _materials)
             {
-                mat.SetFloat("_BlinkAmount", value);
+                if (mat == null)
+                    continue;
+
+                mat.SetFloat(BlinkAmountShaderProperty, value);
             }
         }
     }
 }
-
