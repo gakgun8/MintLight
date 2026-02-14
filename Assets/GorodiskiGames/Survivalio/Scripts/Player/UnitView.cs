@@ -34,6 +34,7 @@ namespace Game.Unit
 
         private Material[] _materials;
         private RuntimeAnimatorController _defaultRuntimeAnimatorController;
+        private Coroutine _blinkCoroutine;
         private static readonly int BlinkAmountShaderProperty = Shader.PropertyToID("_BlinkAmount");
 
         public Vector3 Position
@@ -77,14 +78,16 @@ namespace Game.Unit
             if (_animator != null)
                 _defaultRuntimeAnimatorController = _animator.runtimeAnimatorController;
 
-            _materials = new Material[_renderers?.Length ?? 0];
-            for (int i = 0; i < _materials.Length; i++)
-            {
-                _materials[i] = _renderers[i].material;
-            }
+            CacheMaterials();
 
             if (_collider != null)
                 _collider.radius = _radius;
+        }
+
+        private void OnDisable()
+        {
+            StopBlink();
+            SetBlinkAmount(0f);
         }
 
         public void SetCollider(bool value)
@@ -149,10 +152,11 @@ namespace Game.Unit
 
         public void Damage(float blinkDuration)
         {
-            if (_materials == null || _materials.Length == 0)
+            if (!CacheMaterials())
                 return;
 
-            StartCoroutine(BlinkCoroutine(blinkDuration));
+            StopBlink();
+            _blinkCoroutine = StartCoroutine(BlinkCoroutine(blinkDuration));
         }
 
         private IEnumerator BlinkCoroutine(float blinkDuration)
@@ -160,7 +164,9 @@ namespace Game.Unit
             if (blinkDuration <= 0f)
             {
                 SetBlinkAmount(1f);
+                yield return null;
                 SetBlinkAmount(0f);
+                _blinkCoroutine = null;
                 yield break;
             }
 
@@ -183,6 +189,43 @@ namespace Game.Unit
             }
 
             SetBlinkAmount(0f);
+            _blinkCoroutine = null;
+        }
+
+        private bool CacheMaterials()
+        {
+            if (_renderers == null || _renderers.Length == 0)
+                _renderers = GetComponentsInChildren<Renderer>(true);
+
+            if (_renderers == null || _renderers.Length == 0)
+            {
+                _materials = null;
+                return false;
+            }
+
+            bool hasMaterial = false;
+            _materials = new Material[_renderers.Length];
+            for (int i = 0; i < _renderers.Length; i++)
+            {
+                var renderer = _renderers[i];
+                if (renderer == null)
+                    continue;
+
+                var material = renderer.material;
+                _materials[i] = material;
+                hasMaterial |= material != null;
+            }
+
+            return hasMaterial;
+        }
+
+        private void StopBlink()
+        {
+            if (_blinkCoroutine == null)
+                return;
+
+            StopCoroutine(_blinkCoroutine);
+            _blinkCoroutine = null;
         }
 
         private void SetBlinkAmount(float value)
