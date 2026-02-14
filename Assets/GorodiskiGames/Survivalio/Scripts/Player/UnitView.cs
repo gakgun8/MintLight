@@ -33,6 +33,7 @@ namespace Game.Unit
         public float Radius => _radius;
 
         private Material[] _materials;
+        private RuntimeAnimatorController _defaultRuntimeAnimatorController;
 
         public Vector3 Position
         {
@@ -54,6 +55,8 @@ namespace Game.Unit
 
         private void Awake()
         {
+            _defaultRuntimeAnimatorController = _animator.runtimeAnimatorController;
+
             _materials = new Material[_renderers.Length];
             for (int i = 0; i < _renderers.Length; i++)
             {
@@ -96,6 +99,21 @@ namespace Game.Unit
             _animator.PlayInFixedTime(nameHash, 0, timeValue);
 
             _animator.Update(0);
+        }
+
+
+        public void SetMenuPreviewMode(bool value)
+        {
+            _animator.updateMode = value ? AnimatorUpdateMode.UnscaledTime : AnimatorUpdateMode.Normal;
+        }
+
+        public void ApplyAnimationOverride(AnimatorOverrideController animationOverride)
+        {
+            _animator.runtimeAnimatorController = animationOverride == null
+                ? _defaultRuntimeAnimatorController
+                : animationOverride;
+
+            _animator.Update(0f);
         }
 
         public void Damage(float blinkDuration)

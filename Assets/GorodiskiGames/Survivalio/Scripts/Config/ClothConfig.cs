@@ -18,7 +18,7 @@ namespace Game.Config
     {
         public ClothElementType ClothType;
         public Mesh Mesh;
-        public GameObject Prefab;
+        [Tooltip("Optional: animation override controller used while this cloth is equipped.")]
+        public AnimatorOverrideController AnimationOverride;
     }
 }
-
