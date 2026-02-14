@@ -4,6 +4,7 @@ using Game.Unit;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.Serialization;
 
 namespace Game.Player
 {
@@ -11,6 +12,7 @@ namespace Game.Player
     {
         public event Action ON_FOOT_ON_GROUND;
 
+        [FormerlySerializedAs("_healthImage")]
         [SerializeField] private Image _health;
         [SerializeField] private TMP_Text _healthText;
         [SerializeField] private Transform animatorNode;   // Player/RotateNode/AnimatorNode
@@ -21,7 +23,17 @@ namespace Game.Player
 
         private void Awake()
         {
-            skeletonRoot = animatorNode.Find("Bip001");
+            if (animatorNode == null && RotateNode != null)
+                animatorNode = RotateNode.Find("AnimatorNode");
+
+            if (partsRoot == null)
+                partsRoot = animatorNode;
+
+            if (_health == null)
+                _health = GetComponentInChildren<Image>(true);
+
+            if (animatorNode != null)
+                skeletonRoot = animatorNode.Find("Bip001");
         }
 
         private void ReplacePart(ref GameObject slotObj, string slotName, GameObject prefab)
@@ -30,6 +42,9 @@ namespace Game.Player
                 Destroy(slotObj);
 
             if (prefab == null)
+                return;
+
+            if (partsRoot == null)
                 return;
 
             GameObject go = Instantiate(prefab, partsRoot);

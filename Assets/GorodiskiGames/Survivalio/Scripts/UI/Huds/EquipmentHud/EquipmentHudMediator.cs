@@ -169,6 +169,7 @@ namespace Game.UI.Hud
                 var clothModel = model as ClothModel;
 
                 _player.Model.ClothMeshMap[clothModel.ClothType] = clothModel.Mesh;
+                _player.Model.ClothPrefabMap[clothModel.ClothType] = clothModel.Prefab;
                 _player.Model.SetClothAnimationController(clothModel.ClothType, clothModel.AnimationOverride);
 
                 var type = UnitAttributeType.Health;
@@ -221,6 +222,7 @@ namespace Game.UI.Hud
 
                 var serial = model.Serial;
                 _player.Model.EquippedCloth.Remove(serial);
+                _player.Model.ClothPrefabMap[clothModel.ClothType] = null;
                 _player.Model.RemoveClothAnimationController(clothModel.ClothType);
                 _player.Model.Save();
                 _player.Model.SetChanged();

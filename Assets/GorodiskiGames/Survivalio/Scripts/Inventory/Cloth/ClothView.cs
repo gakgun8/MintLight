@@ -9,6 +9,7 @@ namespace Game.Cloth
         public ClothElementType ClothType;
         public Mesh Mesh;
         public AnimatorOverrideController AnimationOverride;
+        public GameObject Prefab;
 
         public float Armor => Attributes[AttributeType.Armor];
 
@@ -17,6 +18,7 @@ namespace Game.Cloth
             ClothType = config.ClothType;
             Mesh = config.Mesh;
             AnimationOverride = config.AnimationOverride;
+            Prefab = config.Prefab;
 
             UpdateStats();
         }

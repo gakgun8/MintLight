@@ -55,23 +55,44 @@ namespace Game.Unit
 
         private void Awake()
         {
-            _defaultRuntimeAnimatorController = _animator.runtimeAnimatorController;
+            if (_animator == null)
+                _animator = GetComponentInChildren<Animator>(true);
 
-            _materials = new Material[_renderers.Length];
-            for (int i = 0; i < _renderers.Length; i++)
+            if (_collider == null)
+                _collider = GetComponent<CapsuleCollider>();
+
+            if (_rotateNode == null)
+                _rotateNode = transform;
+
+            if (_aimNode == null)
+                _aimNode = _rotateNode;
+
+            if (_bulletNode == null)
+                _bulletNode = _rotateNode;
+
+            if (_renderers == null || _renderers.Length == 0)
+                _renderers = GetComponentsInChildren<Renderer>(true);
+
+            if (_animator != null)
+                _defaultRuntimeAnimatorController = _animator.runtimeAnimatorController;
+
+            _materials = new Material[_renderers?.Length ?? 0];
+            for (int i = 0; i < _materials.Length; i++)
             {
                 _materials[i] = _renderers[i].material;
             }
 
-            _collider.radius = _radius;
+            if (_collider != null)
+                _collider.radius = _radius;
         }
 
         public void SetCollider(bool value)
         {
-            _collider.enabled = value;
+            if (_collider != null)
+                _collider.enabled = value;
         }
 
-        public float GetCurrentStateLength => _animator.GetCurrentAnimatorStateInfo(0).length;
+        public float GetCurrentStateLength => _animator != null ? _animator.GetCurrentAnimatorStateInfo(0).length : 0f;
 
         public void Idle()
         {
@@ -95,6 +116,9 @@ namespace Game.Unit
 
         private void PlayAnimation(AnimatorStateType animationState, float timeValue)
         {
+            if (_animator == null)
+                return;
+
             var nameHash = Animator.StringToHash(animationState.ToString());
             _animator.PlayInFixedTime(nameHash, 0, timeValue);
 
@@ -104,11 +128,17 @@ namespace Game.Unit
 
         public void SetMenuPreviewMode(bool value)
         {
+            if (_animator == null)
+                return;
+
             _animator.updateMode = value ? AnimatorUpdateMode.UnscaledTime : AnimatorUpdateMode.Normal;
         }
 
         public void ApplyAnimationOverride(AnimatorOverrideController animationOverride)
         {
+            if (_animator == null)
+                return;
+
             _animator.runtimeAnimatorController = animationOverride == null
                 ? _defaultRuntimeAnimatorController
                 : animationOverride;

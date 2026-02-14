@@ -124,8 +124,7 @@ namespace Game.Player
                 var level = ClothLevels[serial];
                 var clothModel = new ClothModel(clothConfig, serial, level);
                 ClothMeshMap[clothModel.ClothType] = clothModel.Mesh;
-                // Cloth prefabs are not provided by ClothConfig in this project variant.
-                ClothPrefabMap[clothModel.ClothType] = null;
+                ClothPrefabMap[clothModel.ClothType] = clothModel.Prefab;
                 ClothAnimationControllerMap[clothModel.ClothType] = clothModel.AnimationOverride;
 
                 health += (int)clothModel.Armor;
