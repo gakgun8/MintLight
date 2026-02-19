@@ -24,6 +24,7 @@ namespace Game.UI.Hud
         private PlayerController _player;
 
         private readonly Dictionary<EquipmentModel, InventorySlotView> _slotsMap;
+        private bool _isApplyingEquipChange;
 
         public EquipmentHudMediator()
         {
@@ -39,6 +40,26 @@ namespace Game.UI.Hud
             _player.View.Rotation = Quaternion.Euler(0f, _rotationY, 0f);
             _player.View.InitializeAnimationBinding(_player.Model.GetCurrentClothAnimationController(), true);
             _player.IdleMenu();
+
+            RebuildSlots();
+
+            _view.Model = _player.Model;
+
+            SetContentSize();
+
+            _view.ON_MODEL_CHANGED += OnPlayerModelChanged;
+            _menuManager.ON_EQUIP += OnEquip;
+            _view.ON_CHARACTER_DRAG += OnCharacterDrag;
+        }
+
+        private void RebuildSlots()
+        {
+            foreach (var slot in _slotsMap.Values)
+            {
+                slot.ON_CLICK -= OnEquipmentSlotClick;
+                GameObject.Destroy(slot.gameObject);
+            }
+            _slotsMap.Clear();
 
             var prefab = _resourcesManager.LoadInventorySlot();
             foreach (var serial in _player.Model.StoredWeapons.Keys)
@@ -85,17 +106,11 @@ namespace Game.UI.Hud
                 slot.Model = model;
                 slot.ON_CLICK += OnEquipmentSlotClick;
             }
-
-            _view.Model = _player.Model;
-
-            SetContentSize();
-
-            _menuManager.ON_EQUIP += OnEquip;
-            _view.ON_CHARACTER_DRAG += OnCharacterDrag;
         }
 
         protected override void Hide()
         {
+            _view.ON_MODEL_CHANGED -= OnPlayerModelChanged;
             _menuManager.ON_EQUIP -= OnEquip;
             _view.ON_CHARACTER_DRAG -= OnCharacterDrag;
 
@@ -111,6 +126,15 @@ namespace Game.UI.Hud
             Object.Destroy(_rawCamera.gameObject);
         }
 
+        private void OnPlayerModelChanged(PlayerModel model)
+        {
+            if (_isApplyingEquipChange)
+                return;
+
+            RebuildSlots();
+            SetContentSize();
+        }
+
 
         private void OnCharacterDrag(float rotationDeltaY)
         {
@@ -121,32 +145,42 @@ namespace Game.UI.Hud
 
         private void OnEquip(EquipmentModel candidateModel)
         {
-            var category = candidateModel.Category;
-            foreach (var model in _slotsMap.Keys)
+            _isApplyingEquipChange = true;
+            try
             {
-                if (model.Category != category)
-                    continue;
-
-                if (!model.IsEquipped)
-                    continue;
-
-                if(category == InventoryCategory.Weapon)
+                var category = candidateModel.Category;
+                foreach (var model in _slotsMap.Keys)
                 {
-                    Unequip(model);
-                    break;
-                }
-                else
-                {
-                    var clothModel = model as ClothModel;
-                    var candidateClothModel = candidateModel as ClothModel;
-                    if(clothModel.ClothType != candidateClothModel.ClothType)
+                    if (model.Category != category)
                         continue;
 
-                    Unequip(model);
-                }
-            }
+                    if (!model.IsEquipped)
+                        continue;
 
-            Equip(candidateModel);
+                    if(category == InventoryCategory.Weapon)
+                    {
+                        Unequip(model);
+                        break;
+                    }
+                    else
+                    {
+                        var clothModel = model as ClothModel;
+                        var candidateClothModel = candidateModel as ClothModel;
+                        if(clothModel.ClothType != candidateClothModel.ClothType)
+                            continue;
+
+                        Unequip(model);
+                    }
+                }
+
+                Equip(candidateModel);
+            }
+            finally
+            {
+                _isApplyingEquipChange = false;
+                RebuildSlots();
+                SetContentSize();
+            }
         }
 
         private void Equip(EquipmentModel model)

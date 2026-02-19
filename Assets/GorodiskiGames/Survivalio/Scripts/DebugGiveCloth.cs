@@ -11,8 +11,6 @@ public class RuntimeDebugClothTool : MonoBehaviour
 {
     public string itemInput = "0";
     public bool dontDestroyOnLoad = true;
-    public bool showGui = true;
-    public KeyCode toggleKey = KeyCode.F1;
 
     void NotifyPlayerModelChanged()
     {
@@ -106,9 +104,6 @@ public class RuntimeDebugClothTool : MonoBehaviour
 
     void Update()
     {
-        if (Input.GetKeyDown(toggleKey))
-            showGui = !showGui;
-
         // ✅ 플레이어가 늦게 스폰되는 경우가 많아서 계속 잡아줌(가벼움)
         if (_playerModel == null)
         {
@@ -322,38 +317,6 @@ public class RuntimeDebugClothTool : MonoBehaviour
         var used = new HashSet<int>(dict.Keys);
         while (used.Contains(serial)) serial++;
         return serial;
-    }
-
-    void OnGUI()
-    {
-        if (!showGui) return;
-
-        GUI.Box(new Rect(10, 10, 520, 220), "Runtime Debug Cloth Tool (F1 토글)");
-        GUILayout.BeginArea(new Rect(20, 40, 500, 190));
-
-        GUILayout.Label("아이템 번호 입력: 1,2,3 / 10-20 / 5 6 7 혼용 가능");
-        itemInput = GUILayout.TextField(itemInput);
-
-        GUILayout.BeginHorizontal();
-        if (GUILayout.Button("추가(Add)", GUILayout.Height(30)))
-            AddCloths(ParseItemList(itemInput), 0);
-
-        if (GUILayout.Button("삭제(Remove)", GUILayout.Height(30)))
-            RemoveCloths(ParseItemList(itemInput));
-        GUILayout.EndHorizontal();
-
-        GUILayout.Label($"allowRemoveEquipped: {allowRemoveEquipped}");
-
-        if (TryGetLiveData(out var equipped, out var stored, out var levels))
-        {
-            GUILayout.Label($"StoredCloth: {stored.Count} / EquippedCloth: {equipped.Count}");
-        }
-        else
-        {
-            GUILayout.Label("데이터 로드 실패(GameConfig/PlayerView 확인 필요)");
-        }
-
-        GUILayout.EndArea();
     }
 
     // =========================

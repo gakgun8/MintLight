@@ -25,6 +25,7 @@ namespace Game.UI.Hud
         [SerializeField] private float _dragSensitivity = _defaultDragSensitivity;
 
         public event System.Action<float> ON_CHARACTER_DRAG;
+        public event System.Action<PlayerModel> ON_MODEL_CHANGED;
 
         private CharacterDragInputView _characterDragInput;
 
@@ -68,6 +69,8 @@ namespace Game.UI.Hud
         {
             _attackAttribute.SetValue(model.GetAttribute(UnitAttributeType.Attack));
             _healthAttribute.SetValue(model.GetAttribute(UnitAttributeType.Health));
+
+            ON_MODEL_CHANGED?.Invoke(model);
         }
 
         private void OnCharacterDrag(float deltaX)
