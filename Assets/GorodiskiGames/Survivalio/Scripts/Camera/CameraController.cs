@@ -14,10 +14,12 @@ namespace Game
         [SerializeField] private float _sensitivity = 10f;
         [Header("Zoom")]
         [SerializeField] private bool _enableZoom = true;
+        [SerializeField] private float _defaultFieldOfView = 50f;
         [SerializeField] private float _minFieldOfView = 20f;
         [SerializeField] private float _maxFieldOfView = 70f;
         [SerializeField] private float _mouseScrollZoomSensitivity = 10f;
         [SerializeField] private float _pinchZoomSensitivity = 0.05f;
+        [SerializeField] private float _zoomSmoothTime = 0.12f;
         [Header("Zoom Target")]
         [SerializeField] private float _maxTargetYOffset = 1f;
         [SerializeField] private AnimationCurve _zoomTargetYOffsetCurve = AnimationCurve.Linear(0f, 0f, 1f, 1f);
@@ -26,6 +28,17 @@ namespace Game
 
         private Transform _target;
         private bool _isShaking;
+        private float _targetFieldOfView;
+        private float _zoomVelocity;
+
+        private void Awake()
+        {
+            if (_camera == null)
+                return;
+
+            _targetFieldOfView = Mathf.Clamp(_defaultFieldOfView, _minFieldOfView, _maxFieldOfView);
+            _camera.fieldOfView = _targetFieldOfView;
+        }
 
         private void OnDisable()
         {
@@ -67,6 +80,7 @@ namespace Game
 
             HandleMouseZoom();
             HandlePinchZoom();
+            SmoothZoom();
         }
 
         private void HandleMouseZoom()
@@ -76,7 +90,7 @@ namespace Game
                 return;
 
             var zoomDelta = -scrollDelta * _mouseScrollZoomSensitivity;
-            SetFieldOfView(_camera.fieldOfView + zoomDelta);
+            SetTargetFieldOfView(_targetFieldOfView + zoomDelta);
         }
 
         private void HandlePinchZoom()
@@ -95,12 +109,17 @@ namespace Game
             var pinchDelta = currentDistance - previousDistance;
 
             var zoomDelta = -pinchDelta * _pinchZoomSensitivity;
-            SetFieldOfView(_camera.fieldOfView + zoomDelta);
+            SetTargetFieldOfView(_targetFieldOfView + zoomDelta);
         }
 
-        private void SetFieldOfView(float value)
+        private void SetTargetFieldOfView(float value)
         {
-            _camera.fieldOfView = Mathf.Clamp(value, _minFieldOfView, _maxFieldOfView);
+            _targetFieldOfView = Mathf.Clamp(value, _minFieldOfView, _maxFieldOfView);
+        }
+
+        private void SmoothZoom()
+        {
+            _camera.fieldOfView = Mathf.SmoothDamp(_camera.fieldOfView, _targetFieldOfView, ref _zoomVelocity, _zoomSmoothTime);
         }
 
         private Vector3 GetZoomAdjustedTargetPosition()
