@@ -96,10 +96,9 @@ public static class IconCaptureUtility
 
             if (s.autoFrameByBounds)
             {
-                float radius = b.extents.magnitude * Mathf.Max(1.0f, s.boundsPadding);
-                float fovRad = cam.fieldOfView * Mathf.Deg2Rad;
-                float dist = radius / Mathf.Sin(fovRad * 0.5f);
-                camGO.transform.position = center - forward * dist;
+                float fitDistance = CalculateFitDistanceForBounds(b, center, camGO.transform.rotation, cam.fieldOfView, cam.aspect, cam.nearClipPlane);
+                float distanceScale = Mathf.Max(0.01f, s.boundsPadding);
+                camGO.transform.position = center - forward * (fitDistance * distanceScale);
             }
             else
             {
@@ -162,6 +161,48 @@ public static class IconCaptureUtility
         l.shadows = LightShadows.None;
         go.transform.rotation = Quaternion.Euler(euler);
         return go;
+    }
+
+    static float CalculateFitDistanceForBounds(Bounds bounds, Vector3 center, Quaternion cameraRotation, float verticalFovDeg, float aspect, float nearClip)
+    {
+        var corners = GetBoundsCorners(bounds);
+        var invRot = Quaternion.Inverse(cameraRotation);
+
+        float tanHalfV = Mathf.Tan(verticalFovDeg * Mathf.Deg2Rad * 0.5f);
+        float tanHalfH = tanHalfV * Mathf.Max(0.0001f, aspect);
+
+        float requiredDistance = 0f;
+
+        for (int i = 0; i < corners.Length; i++)
+        {
+            Vector3 local = invRot * (corners[i] - center);
+
+            float reqByX = Mathf.Abs(local.x) / Mathf.Max(0.0001f, tanHalfH) - local.z;
+            float reqByY = Mathf.Abs(local.y) / Mathf.Max(0.0001f, tanHalfV) - local.z;
+            float reqByNear = nearClip - local.z;
+
+            requiredDistance = Mathf.Max(requiredDistance, reqByX, reqByY, reqByNear);
+        }
+
+        return Mathf.Max(requiredDistance, nearClip + 0.01f);
+    }
+
+    static Vector3[] GetBoundsCorners(Bounds b)
+    {
+        var min = b.min;
+        var max = b.max;
+
+        return new[]
+        {
+            new Vector3(min.x, min.y, min.z),
+            new Vector3(min.x, min.y, max.z),
+            new Vector3(min.x, max.y, min.z),
+            new Vector3(min.x, max.y, max.z),
+            new Vector3(max.x, min.y, min.z),
+            new Vector3(max.x, min.y, max.z),
+            new Vector3(max.x, max.y, min.z),
+            new Vector3(max.x, max.y, max.z),
+        };
     }
 
     static bool TryGetBounds(GameObject go, out Bounds bounds)

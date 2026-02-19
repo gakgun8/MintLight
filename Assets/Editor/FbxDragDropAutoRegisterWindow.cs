@@ -20,6 +20,7 @@ public class FbxDragDropAutoRegisterWindow : EditorWindow
 
     // Drop Queue
     readonly List<string> droppedModelPaths = new();
+    Vector2 scrollPosition;
 
     // 코드 → 폴더명 매핑
     static readonly Dictionary<string, string> CodeToFolder = new(StringComparer.OrdinalIgnoreCase)
@@ -103,6 +104,10 @@ public class FbxDragDropAutoRegisterWindow : EditorWindow
 
     void OnGUI()
     {
+        scrollPosition = EditorGUILayout.BeginScrollView(scrollPosition);
+
+        try
+        {
         EditorGUILayout.Space(8);
         EditorGUILayout.LabelField("Targets (경로 저장됨)", EditorStyles.boldLabel);
 
@@ -144,6 +149,12 @@ public class FbxDragDropAutoRegisterWindow : EditorWindow
 
         if (GUILayout.Button("Save Paths Now"))
             SavePrefs();
+
+        }
+        finally
+        {
+            EditorGUILayout.EndScrollView();
+        }
     }
 
     bool CanRun()
@@ -246,7 +257,7 @@ public class FbxDragDropAutoRegisterWindow : EditorWindow
         captureSettings.cameraEuler = EditorGUILayout.Vector3Field("Camera Euler", captureSettings.cameraEuler);
         captureSettings.autoFrameByBounds = EditorGUILayout.Toggle("Auto Frame By Bounds", captureSettings.autoFrameByBounds);
         if (captureSettings.autoFrameByBounds)
-            captureSettings.boundsPadding = EditorGUILayout.Slider("Bounds Padding", captureSettings.boundsPadding, 1.0f, 2.0f);
+            captureSettings.boundsPadding = EditorGUILayout.Slider("Bounds Padding", captureSettings.boundsPadding, 0f, 2.0f);
         else
             captureSettings.cameraDistance = EditorGUILayout.FloatField("Camera Distance", captureSettings.cameraDistance);
 
@@ -519,6 +530,13 @@ public class FbxDragDropAutoRegisterWindow : EditorWindow
 
     static Game.Config.ClothElementType GuessClothTypeFromName(string fileNameNoExt)
     {
+        var upper = fileNameNoExt.ToUpperInvariant();
+        if (upper.Contains("_HD_")) return Game.Config.ClothElementType.Helmet;
+        if (upper.Contains("_BD_")) return Game.Config.ClothElementType.Vest;
+        if (upper.Contains("_LG_")) return Game.Config.ClothElementType.Uniform;
+        if (upper.Contains("_BP_")) return Game.Config.ClothElementType.Gloves;
+        if (upper.Contains("_SH_")) return Game.Config.ClothElementType.Shoes;
+
         var n = fileNameNoExt.ToLowerInvariant();
         if (n.Contains("helmet") || n.Contains("_hm_") || n.EndsWith("_hm")) return Game.Config.ClothElementType.Helmet;
         if (n.Contains("vest") || n.Contains("_vs_") || n.EndsWith("_vs")) return Game.Config.ClothElementType.Vest;
