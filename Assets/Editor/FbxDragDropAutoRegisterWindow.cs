@@ -20,6 +20,7 @@ public class FbxDragDropAutoRegisterWindow : EditorWindow
 
     // Drop Queue
     readonly List<string> droppedModelPaths = new();
+    Vector2 scrollPosition;
 
     // 코드 → 폴더명 매핑
     static readonly Dictionary<string, string> CodeToFolder = new(StringComparer.OrdinalIgnoreCase)
@@ -103,6 +104,10 @@ public class FbxDragDropAutoRegisterWindow : EditorWindow
 
     void OnGUI()
     {
+        scrollPosition = EditorGUILayout.BeginScrollView(scrollPosition);
+
+        try
+        {
         EditorGUILayout.Space(8);
         EditorGUILayout.LabelField("Targets (경로 저장됨)", EditorStyles.boldLabel);
 
@@ -144,6 +149,12 @@ public class FbxDragDropAutoRegisterWindow : EditorWindow
 
         if (GUILayout.Button("Save Paths Now"))
             SavePrefs();
+
+        }
+        finally
+        {
+            EditorGUILayout.EndScrollView();
+        }
     }
 
     bool CanRun()
