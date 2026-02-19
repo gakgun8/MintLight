@@ -279,8 +279,6 @@ public class FbxDragDropAutoRegisterWindow : EditorWindow
 
         try
         {
-            AssetDatabase.StartAssetEditing();
-
             foreach (var modelPath in droppedModelPaths.ToList())
             {
                 if (!modelPath.EndsWith(".fbx", StringComparison.OrdinalIgnoreCase))
@@ -374,7 +372,6 @@ public class FbxDragDropAutoRegisterWindow : EditorWindow
 
         finally
         {
-            AssetDatabase.StopAssetEditing();
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
         }
