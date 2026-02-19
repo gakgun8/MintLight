@@ -246,7 +246,7 @@ public class FbxDragDropAutoRegisterWindow : EditorWindow
         captureSettings.cameraEuler = EditorGUILayout.Vector3Field("Camera Euler", captureSettings.cameraEuler);
         captureSettings.autoFrameByBounds = EditorGUILayout.Toggle("Auto Frame By Bounds", captureSettings.autoFrameByBounds);
         if (captureSettings.autoFrameByBounds)
-            captureSettings.boundsPadding = EditorGUILayout.Slider("Bounds Padding", captureSettings.boundsPadding, 1.0f, 2.0f);
+            captureSettings.boundsPadding = EditorGUILayout.Slider("Bounds Padding", captureSettings.boundsPadding, 0f, 2.0f);
         else
             captureSettings.cameraDistance = EditorGUILayout.FloatField("Camera Distance", captureSettings.cameraDistance);
 
