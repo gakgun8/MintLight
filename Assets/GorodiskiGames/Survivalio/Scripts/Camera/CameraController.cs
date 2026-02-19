@@ -18,6 +18,9 @@ namespace Game
         [SerializeField] private float _maxFieldOfView = 70f;
         [SerializeField] private float _mouseScrollZoomSensitivity = 10f;
         [SerializeField] private float _pinchZoomSensitivity = 0.05f;
+        [Header("Zoom Target")]
+        [SerializeField] private float _maxTargetYOffset = 1f;
+        [SerializeField] private AnimationCurve _zoomTargetYOffsetCurve = AnimationCurve.Linear(0f, 0f, 1f, 1f);
 
         public Camera Camera => _camera;
 
@@ -49,7 +52,10 @@ namespace Game
             if(_target == null)
                 return;
 
-            transform.position = Vector3.Lerp(transform.position, _target.position + _target.forward * _distance, Time.deltaTime * _sensitivity);
+            var targetPosition = GetZoomAdjustedTargetPosition();
+            var cameraTargetPosition = targetPosition + _target.forward * _distance;
+
+            transform.position = Vector3.Lerp(transform.position, cameraTargetPosition, Time.deltaTime * _sensitivity);
 
             HandleZoom();
         }
@@ -95,6 +101,16 @@ namespace Game
         private void SetFieldOfView(float value)
         {
             _camera.fieldOfView = Mathf.Clamp(value, _minFieldOfView, _maxFieldOfView);
+        }
+
+        private Vector3 GetZoomAdjustedTargetPosition()
+        {
+            if (_camera == null)
+                return _target.position;
+
+            var zoomProgress = Mathf.InverseLerp(_maxFieldOfView, _minFieldOfView, _camera.fieldOfView);
+            var yOffset = _zoomTargetYOffsetCurve.Evaluate(zoomProgress) * _maxTargetYOffset;
+            return _target.position + Vector3.up * yOffset;
         }
 
         public void Shake()
