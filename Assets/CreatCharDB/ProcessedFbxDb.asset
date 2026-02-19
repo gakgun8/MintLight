@@ -1,0 +1,31 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c9b224065543b0f4b9c07780b76349fb, type: 3}
+  m_Name: ProcessedFbxDb
+  m_EditorClassIdentifier: Assembly-CSharp-Editor::ProcessedFbxDb
+  items:
+  - guid: 6bf546039b3d58243b0764ed45df1f63
+    assetPath: Assets/GorodiskiGames/Survivalio/ResourcesStatic/Models/Units/Chr_001_SH_002.fbx
+    hash: 6bf546039b3d58243b0764ed45df1f63|639070856307822969|1|Import|Generic|NoAvatar
+    lastWriteUtcTicks: 639070856307822969
+  - guid: d0e5c5546bb2bca479221ec6529fb2f2
+    assetPath: Assets/GorodiskiGames/Survivalio/ResourcesStatic/Models/Units/Chr_001_LG_002.fbx
+    hash: d0e5c5546bb2bca479221ec6529fb2f2|639070856300630552|1|Import|Generic|NoAvatar
+    lastWriteUtcTicks: 639070856300630552
+  - guid: 4324723048f85a640b05d625f9963948
+    assetPath: Assets/GorodiskiGames/Survivalio/ResourcesStatic/Models/Units/Chr_001_HD_002.fbx
+    hash: 4324723048f85a640b05d625f9963948|639070856278103838|1|Import|Generic|NoAvatar
+    lastWriteUtcTicks: 639070856278103838
+  - guid: 932cc3f564351e84d9a6686050d3b61b
+    assetPath: Assets/GorodiskiGames/Survivalio/ResourcesStatic/Models/Units/Chr_001_BD_002.fbx
+    hash: 932cc3f564351e84d9a6686050d3b61b|639070856293123810|1|Import|Generic|NoAvatar
+    lastWriteUtcTicks: 639070856293123810

@@ -60,6 +60,17 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 55921b942aff74b0a9ffa57de6343cf5, type: 2}
   - {fileID: 11400000, guid: e41ae9c9261504819a8662212e0d7076, type: 2}
   - {fileID: 11400000, guid: 44b7f47b0a1a04a428fb5bbe827f2055, type: 2}
+  - {fileID: 11400000, guid: 572d8d9b683766c44916a612e3f18187, type: 2}
+  - {fileID: 11400000, guid: 451633b215d3c3a468c0b8a8a3fa4272, type: 2}
+  - {fileID: 11400000, guid: 34d16075bdac71d4788dd60e75554afd, type: 2}
+  - {fileID: 11400000, guid: 5b15d6d3c9cb14c408719a44d6467444, type: 2}
+  - {fileID: 11400000, guid: 4180c81811588a941a8634e868acd663, type: 2}
+  - {fileID: 11400000, guid: b0ea8ef9da0a3d74b9984f10d2761025, type: 2}
+  - {fileID: 11400000, guid: e42379dc7a570ad4dabdd8248e46dde7, type: 2}
+  - {fileID: 11400000, guid: 0ded2283c16379744adec7f236190ce1, type: 2}
+  - {fileID: 11400000, guid: e35ffc107d63889499c18ca71b85061a, type: 2}
+  - {fileID: 0}
+  - {fileID: 0}
   MenuHudConfigs:
   - {fileID: 11400000, guid: 142e138e9de9b4397b83e1ae0ca54a37, type: 2}
   - {fileID: 11400000, guid: c8a255fee6ce94be4baa6216d9d4ae5e, type: 2}

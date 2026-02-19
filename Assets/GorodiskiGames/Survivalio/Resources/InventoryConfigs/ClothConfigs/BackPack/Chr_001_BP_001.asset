@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 773fe96a05baa418889b2279fea40dd2, type: 3}
+  m_Name: Chr_001_BP_001
+  m_EditorClassIdentifier: Assembly-CSharp::Game.Config.ClothConfig
+  Label: BackPack
+  Icon: {fileID: 21300000, guid: e254f045d779ab54e893373c53a41edf, type: 3}
+  Category: 0
+  Index: 18
+  Levels:
+  - Price: 2
+    Attributes:
+    - Type: 1
+      Value: 20
+    - Type: 2
+      Value: 20
+  - Price: 2
+    Attributes:
+    - Type: 1
+      Value: 20
+  ClothType: 3
+  Prefab: {fileID: 5477828450080838919, guid: 6a59fa545e6ee094c82e3562d308fb91, type: 3}
+  Mesh: {fileID: 2880727881161695478, guid: 8f28912478acd0944adafbd6411cb30b, type: 3}
+  AnimationOverride: {fileID: 0}

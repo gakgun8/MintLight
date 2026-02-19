@@ -11,8 +11,16 @@ namespace Game.Player
     {
         public event Action ON_FOOT_ON_GROUND;
 
+        // ✅ 디버그/툴에서 접근할 모델 캐시
+        private PlayerModel _debugModel;
+        public PlayerModel DebugModel => _debugModel;
+
+        // (선택) 디버그툴에서 편하게 부르라고 별칭 제공
+        public PlayerModel GetPlayerModel() => _debugModel;
+
         [SerializeField] private Image _health;
         [SerializeField] private TMP_Text _healthText;
+
         [SerializeField] private SkinnedMeshRenderer _full;
         [SerializeField] private SkinnedMeshRenderer _head;
         [SerializeField] private SkinnedMeshRenderer _helmet;
@@ -20,6 +28,7 @@ namespace Game.Player
         [SerializeField] private SkinnedMeshRenderer _uniform;
         [SerializeField] private SkinnedMeshRenderer _gloves;
         [SerializeField] private SkinnedMeshRenderer _shoes;
+
         [SerializeField] private Transform animatorNode;   // Player/RotateNode/AnimatorNode
         [SerializeField] private Transform partsRoot;      // AnimatorNode/PartsRoot
 
@@ -30,9 +39,8 @@ namespace Game.Player
         protected override void Awake()
         {
             base.Awake();
-            skeletonRoot = animatorNode.Find("Bip001");
+            skeletonRoot = animatorNode != null ? animatorNode.Find("Bip001") : null;
         }
-
 
         private void ReplacePartIfNeeded(ref GameObject slotObj, ref GameObject cachedPrefab, string slotName, GameObject prefab)
         {
@@ -58,14 +66,19 @@ namespace Game.Player
             go.transform.localRotation = Quaternion.identity;
             go.transform.localScale = Vector3.one;
 
-            PartBinder.BindSkinnedMeshes(go, skeletonRoot, "Bip001 Pelvis");
+            // skeletonRoot가 없으면 바인딩 불가
+            if (skeletonRoot != null)
+                PartBinder.BindSkinnedMeshes(go, skeletonRoot, "Bip001 Pelvis");
 
             slotObj = go;
         }
 
         protected override void OnModelChanged(UnitModel model)
         {
-            var playerModel = model as PlayerModel;
+            // ✅ 캐시부터
+            _debugModel = model as PlayerModel;
+
+            var playerModel = _debugModel;
             if (playerModel == null)
                 return;
 

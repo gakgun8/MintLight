@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 773fe96a05baa418889b2279fea40dd2, type: 3}
+  m_Name: Chr_001_009_b
+  m_EditorClassIdentifier: Assembly-CSharp::Game.Config.ClothConfig
+  Label: Hood
+  Icon: {fileID: 21300000, guid: 898f886a39d714db5b90d2c36676c894, type: 3}
+  Category: 0
+  Index: 15
+  Levels:
+  - Price: 2
+    Attributes:
+    - Type: 2
+      Value: 20
+    - Type: 3
+      Value: 3
+  ClothType: 2
+  Prefab: {fileID: 8420413464194886772, guid: 41b4a7947ab188a4e95c57e8a42b3af0, type: 3}
+  Mesh: {fileID: 819310647452677157, guid: e812e3df52738c74dbfcc8ce88f580ee, type: 3}
+  AnimationOverride: {fileID: 0}

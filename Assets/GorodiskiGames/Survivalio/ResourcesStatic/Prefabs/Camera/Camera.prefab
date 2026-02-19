@@ -112,6 +112,11 @@ MonoBehaviour:
   _camera: {fileID: 7529273587953797055}
   _distance: 2
   _sensitivity: 3
+  _enableZoom: 1
+  _minFieldOfView: 15
+  _maxFieldOfView: 50
+  _mouseScrollZoomSensitivity: 3
+  _pinchZoomSensitivity: 1
 --- !u!1 &7529273587953797053
 GameObject:
   m_ObjectHideFlags: 0

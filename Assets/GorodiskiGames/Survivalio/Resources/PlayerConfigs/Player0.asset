@@ -18,7 +18,7 @@ MonoBehaviour:
   WalkSpeed: 8
   RotateSpeed: 20
   HasAllClothMeshes: 1
-  FullSkinnedMesh: {fileID: -8712325896939249166, guid: bdc1bb78fb6fa445aaeeb354463b33b3, type: 3}
+  FullSkinnedMesh: {fileID: -5807427919299762909, guid: c1074c090bf52664b8f19bf61f5fa118, type: 3}
   AttributeInfos:
   - Type: 2
     Value: 5

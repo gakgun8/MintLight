@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 773fe96a05baa418889b2279fea40dd2, type: 3}
+  m_Name: Chr_001_009_c 1
+  m_EditorClassIdentifier: Assembly-CSharp::Game.Config.ClothConfig
+  Label: Vast_008
+  Icon: {fileID: 21300000, guid: 32bbb253fff7e5644beaeb80ccd4b011, type: 3}
+  Category: 0
+  Index: 17
+  Levels:
+  - Price: 2
+    Attributes:
+    - Type: 2
+      Value: 20
+    - Type: 3
+      Value: 3
+  ClothType: 1
+  Prefab: {fileID: 7764098026250964658, guid: 7b7b9cf418efa7149af1f322389fc8ea, type: 3}
+  Mesh: {fileID: -6015957703598885179, guid: df8b4dfc7ce59924cb674f452a30a524, type: 3}
+  AnimationOverride: {fileID: 0}
