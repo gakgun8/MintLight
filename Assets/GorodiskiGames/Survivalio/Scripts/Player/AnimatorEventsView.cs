@@ -21,5 +21,13 @@ namespace Game.Player
 
             _playerView.FireAttackHit();
         }
+
+        public void FireAttackDash()
+        {
+            if (_playerView == null)
+                return;
+
+            _playerView.FireAttackDash();
+        }
     }
 }
