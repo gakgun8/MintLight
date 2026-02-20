@@ -86,5 +86,17 @@ namespace Injection
 #endif
             return _objectsMap[type];
         }
+
+        public bool TryGet<T>(out T value) where T : class
+        {
+            if (_objectsMap.TryGetValue(typeof(T), out var objectValue))
+            {
+                value = objectValue as T;
+                return value != null;
+            }
+
+            value = null;
+            return false;
+        }
     }
 }

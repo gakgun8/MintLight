@@ -198,7 +198,9 @@ namespace Game.Player
             _view = view;
             _model = model;
             _timer = context.Get<Timer>();
-            _gameManager = context.Get<GameManager>();
+
+            if (!context.TryGet(out _gameManager))
+                Debug.LogWarning("[PlayerController] GameManager was not found in context. Player combat target scan is disabled for this mode.");
 
             var subContext = new Context(context);
             var injector = new Injector(subContext);
@@ -291,6 +293,9 @@ namespace Game.Player
 
         private void RefreshTarget()
         {
+            if (_gameManager == null)
+                return;
+
             EnemyController bestEnemy = null;
             var shortestDistance = float.MaxValue;
             var playerPosition = _view.Position;
