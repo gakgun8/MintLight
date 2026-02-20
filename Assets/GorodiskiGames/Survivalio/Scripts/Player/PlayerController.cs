@@ -171,12 +171,15 @@ namespace Game.Player
         private const float _speed = 15f;
         private const float DASH_SKIN = 0.02f;
 
+        private float _comboResetWindow = 0.9f;
+
         private readonly PlayerView _view;
         private readonly PlayerModel _model;
         private readonly Timer _timer;
         private readonly GameManager _gameManager;
         private readonly AutoCombatConfig _autoCombatConfig;
         private readonly AttackConfig _attackConfig;
+        private readonly Animator _animator;
 
         public PlayerModel Model => _model;
         public new PlayerView View => _view;
@@ -195,6 +198,8 @@ namespace Game.Player
         private EnemyController _scheduledHitTarget;
         private bool _awaitingAnimationHit;
         private Coroutine _dashCoroutine;
+        private int _comboIndex;
+        private float _lastAttackTime = -999f;
 
         public PlayerController(PlayerView view, PlayerModel model, Context context) : base(view)
         {
@@ -215,6 +220,12 @@ namespace Game.Player
             _autoCombatConfig = gameConfig.AutoCombatConfig != null ? gameConfig.AutoCombatConfig : (gameConfig.PlayerConfig != null ? gameConfig.PlayerConfig.autoCombat : null);
             _attackConfig = gameConfig.AttackConfig;
 
+            if (_attackConfig != null)
+            {
+                // 자동전투 쿨다운 간격보다 넉넉하게 잡아서 콤보가 리셋되지 않게 함
+                _comboResetWindow = Mathf.Max(0.9f, _attackConfig.attackCooldown + 0.2f);
+            }
+
             if (_autoCombatConfig == null)
                 Debug.LogWarning("[PlayerCombat] AutoCombatConfig is NULL. Auto combat disabled.");
             if (_attackConfig == null)
@@ -225,6 +236,8 @@ namespace Game.Player
             _stateManager.IsLogEnabled = showLogs;
 
             injector.Inject(_stateManager);
+
+            _animator = _view.GetComponentInChildren<Animator>(true);
 
             _view.Model = model;
             _view.InitializeAnimationBinding(_model.GetCurrentClothAnimationController(), false);
@@ -390,8 +403,7 @@ namespace Game.Player
             var cooldown = Mathf.Max(0.01f, _attackConfig.attackCooldown);
             _nextAttackTime = currentTime + cooldown;
 
-            _view.Attack();
-            LogCombat($"Attack() called for target={_currentTarget.View.name}");
+            StartAttackCombo();
 
             _awaitingAnimationHit = true;
             _scheduledHitTarget = _currentTarget;
@@ -410,6 +422,31 @@ namespace Game.Player
                 _scheduledHitTime = -1f;
                 TryApplyHit(target);
             }
+        }
+
+
+        private void StartAttackCombo()
+        {
+            if (Time.time - _lastAttackTime > _comboResetWindow)
+                _comboIndex = 0;
+
+            _comboIndex = (_comboIndex % 3) + 1;
+            _lastAttackTime = Time.time;
+
+            if (_animator != null)
+            {
+                int stateHash = Animator.StringToHash($"Attack_0{_comboIndex}");
+                if (_animator.HasState(0, stateHash))
+                {
+                    _animator.PlayInFixedTime(stateHash, 0, float.NegativeInfinity);
+                    _animator.Update(0f);
+                    LogCombat($"StartAttackCombo combo={_comboIndex}/3 target={_currentTarget.View.name}");
+                    return;
+                }
+            }
+
+            _view.Attack();
+            LogCombat($"StartAttackCombo fallback combo={_comboIndex}/3 target={_currentTarget.View.name}");
         }
 
         private void OnAnimationAttackHit()
