@@ -169,6 +169,7 @@ namespace Game.Player
         private const string _damageFormat = "-{0}";
         private const float _distance = 1.5f;
         private const float _speed = 15f;
+        private const float COMBO_RESET_WINDOW = 0.9f;
 
         private readonly PlayerView _view;
         private readonly PlayerModel _model;
@@ -189,10 +190,11 @@ namespace Game.Player
         private EnemyController _currentTarget;
         private float _nextScanTime;
         private float _nextAttackTime;
-        private float _scheduledHitTime = -1f;
         private float _lastCooldownLogTime = -999f;
-        private EnemyController _scheduledHitTarget;
-        private bool _awaitingAnimationHit;
+        private int _comboIndex;
+        private float _lastAttackTime = -999f;
+        private UnitController _pendingHitTarget;
+        private GameManager _pendingHitGameManager;
 
         public PlayerController(PlayerView view, PlayerModel model, Context context) : base(view)
         {
@@ -229,14 +231,14 @@ namespace Game.Player
             Visibility(true);
             _view.SetCollider(true);
 
-            _view.ON_ATTACK_HIT += OnAnimationAttackHit;
+            _view.ON_ATTACK_HIT += OnAttackHit;
             _timer.TICK += OnTick;
         }
 
         public void Dispose()
         {
             _timer.TICK -= OnTick;
-            _view.ON_ATTACK_HIT -= OnAnimationAttackHit;
+            _view.ON_ATTACK_HIT -= OnAttackHit;
             _stateManager.Dispose();
             Visibility(false);
         }
@@ -247,16 +249,6 @@ namespace Game.Player
                 return;
 
             var currentTime = _timer.Time;
-
-            if (_scheduledHitTarget != null && currentTime >= _scheduledHitTime)
-            {
-                LogCombat("Attack fallback hitDelay elapsed. Applying fallback hit.");
-                var hitTarget = _scheduledHitTarget;
-                _awaitingAnimationHit = false;
-                _scheduledHitTarget = null;
-                _scheduledHitTime = -1f;
-                TryApplyHit(hitTarget);
-            }
 
             if (currentTime >= _nextScanTime)
             {
@@ -379,85 +371,62 @@ namespace Game.Player
             var cooldown = Mathf.Max(0.01f, _attackConfig.attackCooldown);
             _nextAttackTime = currentTime + cooldown;
 
-            _view.Attack();
-            LogCombat($"Attack() called for target={_currentTarget.View.name}");
-
-            _awaitingAnimationHit = true;
-            _scheduledHitTarget = _currentTarget;
-
-            if (_attackConfig.hitDelay > 0f)
-            {
-                _scheduledHitTime = currentTime + _attackConfig.hitDelay;
-                LogCombat($"Attack scheduled in {_attackConfig.hitDelay:F2}s for {_scheduledHitTarget.View.name}");
-            }
-            else
-            {
-                LogCombat("Attack fallback hitDelay=0. Applying immediate fallback hit.");
-                var target = _scheduledHitTarget;
-                _awaitingAnimationHit = false;
-                _scheduledHitTarget = null;
-                _scheduledHitTime = -1f;
-                TryApplyHit(target);
-            }
+            StartAttackCombo(_currentTarget, _gameManager);
         }
 
-        private void OnAnimationAttackHit()
+        public void StartAttackCombo(UnitController target, GameManager gameManager)
         {
-            if (!_awaitingAnimationHit || _scheduledHitTarget == null)
+            if (target == null)
                 return;
 
-            LogCombat("ON_ATTACK_HIT received. Applying hit by animation event.");
+            _pendingHitTarget = target;
+            _pendingHitGameManager = gameManager;
 
-            var target = _scheduledHitTarget;
-            _awaitingAnimationHit = false;
-            _scheduledHitTarget = null;
-            _scheduledHitTime = -1f;
-            TryApplyHit(target);
+            if (Time.time - _lastAttackTime > COMBO_RESET_WINDOW)
+                _comboIndex = 0;
+
+            _comboIndex = (_comboIndex % 3) + 1;
+            _lastAttackTime = Time.time;
+
+            _view.PlayAttackCombo(_comboIndex);
+            var targetName = target.View != null ? target.View.name : "NULL";
+            Debug.Log($"[PlayerCombat] StartAttackCombo combo={_comboIndex}, target={targetName}");
         }
 
-        private void TryApplyHit(EnemyController enemy)
+        private void OnAttackHit()
         {
-            if (enemy == null || enemy.Model == null || enemy.View == null)
+            Debug.Log("[PlayerCombat] OnAttackHit received.");
+
+            if (_pendingHitTarget == null)
+                return;
+
+            if (!(_pendingHitTarget is EnemyController enemy))
             {
-                Debug.LogWarning("[PlayerCombat] Hit failed - target reference is NULL.");
+                Debug.LogWarning("[PlayerCombat] TODO: Unsupported target type for attack hit. Connect existing damage API for this UnitController type.");
+                _pendingHitTarget = null;
+                _pendingHitGameManager = null;
                 return;
             }
 
-            if (enemy.Model.Health <= 0)
-                return;
-
-            var toEnemy = enemy.View.Position - _view.Position;
-            toEnemy.y = 0f;
-
-            if (!IsInHitArea(toEnemy))
+            if (enemy.Model == null || enemy.View == null || enemy.Model.Health <= 0)
             {
-                LogCombat($"Hit failed - target {enemy.View.name} outside hit area.");
+                _pendingHitTarget = null;
+                _pendingHitGameManager = null;
                 return;
             }
 
             var attackValue = _model.GetAttribute(UnitAttributeType.Attack);
-            var damage = Mathf.Max(1, Mathf.RoundToInt(attackValue * Mathf.Max(0f, _attackConfig.damageMultiplier)));
+            var damage = Mathf.Max(1, Mathf.RoundToInt(attackValue));
 
-            var direction = toEnemy.sqrMagnitude > 0.0001f ? toEnemy.normalized : _view.RotateNode.forward;
+            var direction = enemy.View.Position - _view.Position;
+            direction.y = 0f;
+            direction = direction.sqrMagnitude > 0.0001f ? direction.normalized : _view.RotateNode.forward;
+
             enemy.TryToDamage(damage, direction);
-            LogCombat($"Hit success - target={enemy.View.name}, damage={damage}");
-        }
+            Debug.Log($"[PlayerCombat] Damage applied. target={enemy.View.name}, damage={damage}");
 
-        private bool IsInHitArea(Vector3 toEnemy)
-        {
-            var range = Mathf.Max(0.1f, _attackConfig.attackRange);
-            var planarDistance = new Vector2(toEnemy.x, toEnemy.z).magnitude;
-            if (planarDistance > range)
-                return false;
-
-            var radius = _attackConfig.hitRadius > 0f
-                ? _attackConfig.hitRadius
-                : Mathf.Max(_attackConfig.hitBox.x, _attackConfig.hitBox.z) * 0.5f;
-
-            if (radius <= 0f)
-                radius = range;
-
-            return planarDistance <= radius;
+            _pendingHitTarget = null;
+            _pendingHitGameManager = null;
         }
 
         private void LogCombat(string message)

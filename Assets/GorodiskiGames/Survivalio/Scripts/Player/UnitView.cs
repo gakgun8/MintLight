@@ -21,6 +21,9 @@ namespace Game.Unit
 
     public abstract class UnitView : BehaviourWithModel<UnitModel>
     {
+        private static readonly int Hash_AttackIndex = Animator.StringToHash("AttackIndex");
+        private static readonly int Hash_AttackTrigger = Animator.StringToHash("AttackTrigger");
+
         [SerializeField] private CapsuleCollider _collider;
         [SerializeField] private Animator _animator;
         [SerializeField] private Transform _rotateNode;
@@ -129,6 +132,17 @@ namespace Game.Unit
         public void Attack(float normalizedTime = float.NegativeInfinity)
         {
             PlayAnimation(AnimatorStateType.Attack, normalizedTime);
+        }
+
+        public void PlayAttackCombo(int comboIndex)
+        {
+            if (_animator == null)
+                return;
+
+            comboIndex = Mathf.Clamp(comboIndex, 1, 3);
+            _animator.SetInteger(Hash_AttackIndex, comboIndex);
+            _animator.SetTrigger(Hash_AttackTrigger);
+            _animator.Update(0);
         }
 
         private void PlayAnimation(AnimatorStateType animationState, float timeValue)
