@@ -10,6 +10,7 @@ namespace Game.Player
     public sealed class PlayerView : UnitView
     {
         public event Action ON_FOOT_ON_GROUND;
+        public event Action ON_ATTACK_HIT;
 
         // ✅ 디버그/툴에서 접근할 모델 캐시
         private PlayerModel _debugModel;
@@ -110,6 +111,11 @@ namespace Game.Player
         public void FireFootOnGround()
         {
             ON_FOOT_ON_GROUND?.Invoke();
+        }
+
+        public void FireAttackHit()
+        {
+            ON_ATTACK_HIT?.Invoke();
         }
     }
 }

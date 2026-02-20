@@ -4,6 +4,7 @@ using Core;
 using Game.Cloth;
 using Game.Config;
 using Game.Core;
+using Game.Enemy;
 using Game.Effect;
 using Game.Managers;
 using Game.Modules;
@@ -171,6 +172,10 @@ namespace Game.Player
 
         private readonly PlayerView _view;
         private readonly PlayerModel _model;
+        private readonly Timer _timer;
+        private readonly GameManager _gameManager;
+        private readonly AutoCombatConfig _autoCombatConfig;
+        private readonly AttackConfig _attackConfig;
 
         public PlayerModel Model => _model;
         public new PlayerView View => _view;
@@ -181,10 +186,19 @@ namespace Game.Player
         private float _spinDirection = 1f;
         public float SpinDirection => _spinDirection *= -1f;
 
+        private EnemyController _currentTarget;
+        private float _nextScanTime;
+        private float _nextAttackTime;
+        private float _scheduledHitTime = -1f;
+        private float _lastCooldownLogTime = -999f;
+        private EnemyController _scheduledHitTarget;
+
         public PlayerController(PlayerView view, PlayerModel model, Context context) : base(view)
         {
             _view = view;
             _model = model;
+            _timer = context.Get<Timer>();
+            _gameManager = context.Get<GameManager>();
 
             var subContext = new Context(context);
             var injector = new Injector(subContext);
@@ -193,6 +207,14 @@ namespace Game.Player
             subContext.Install(injector);
 
             var gameConfig = context.Get<GameConfig>();
+            _autoCombatConfig = gameConfig.AutoCombatConfig != null ? gameConfig.AutoCombatConfig : (gameConfig.PlayerConfig != null ? gameConfig.PlayerConfig.autoCombat : null);
+            _attackConfig = gameConfig.AttackConfig;
+
+            if (_autoCombatConfig == null)
+                Debug.LogWarning("[PlayerCombat] AutoCombatConfig is NULL. Auto combat disabled.");
+            if (_attackConfig == null)
+                Debug.LogWarning("[PlayerCombat] AttackConfig is NULL. Auto combat disabled.");
+
             var showLogs = gameConfig.LogEntityMap[EntityType.Player];
             _stateManager = new StateManager<PlayerState>();
             _stateManager.IsLogEnabled = showLogs;
@@ -203,12 +225,224 @@ namespace Game.Player
             _view.InitializeAnimationBinding(_model.GetCurrentClothAnimationController(), false);
             Visibility(true);
             _view.SetCollider(true);
+
+            _view.ON_ATTACK_HIT += OnAnimationAttackHit;
+            _timer.TICK += OnTick;
         }
 
         public void Dispose()
         {
+            _timer.TICK -= OnTick;
+            _view.ON_ATTACK_HIT -= OnAnimationAttackHit;
             _stateManager.Dispose();
             Visibility(false);
+        }
+
+        private void OnTick()
+        {
+            if (_autoCombatConfig == null || _attackConfig == null || !_autoCombatConfig.enableAutoCombat)
+                return;
+
+            var currentTime = _timer.Time;
+
+            if (_scheduledHitTarget != null && currentTime >= _scheduledHitTime)
+            {
+                var hitTarget = _scheduledHitTarget;
+                _scheduledHitTarget = null;
+                _scheduledHitTime = -1f;
+                TryApplyHit(hitTarget);
+            }
+
+            if (currentTime >= _nextScanTime)
+            {
+                RefreshTarget();
+                _nextScanTime = currentTime + Mathf.Max(0.05f, _autoCombatConfig.targetScanInterval);
+            }
+
+            if (_currentTarget == null)
+                return;
+
+            var targetPosition = _currentTarget.View.Position;
+            var attackRange = Mathf.Max(0.1f, _attackConfig.attackRange);
+            var distance = Vector3.Distance(_view.Position, targetPosition);
+
+            if (distance <= attackRange || _autoCombatConfig.outOfRangeBehaviour == OutOfRangeBehaviour.RotateOnly)
+                RotateToTarget(targetPosition);
+
+            if (currentTime < _nextAttackTime)
+            {
+                if (currentTime - _lastCooldownLogTime >= 0.25f)
+                {
+                    var remain = _nextAttackTime - currentTime;
+                    LogCombat($"Attack skipped - cooldown. remaining={remain:F2}s");
+                    _lastCooldownLogTime = currentTime;
+                }
+                return;
+            }
+
+            if (distance > attackRange)
+            {
+                LogCombat($"Attack skipped - out of range. distance={distance:F2}, range={attackRange:F2}");
+                return;
+            }
+
+            TryAttack(currentTime);
+        }
+
+        private void RefreshTarget()
+        {
+            EnemyController bestEnemy = null;
+            var shortestDistance = float.MaxValue;
+            var playerPosition = _view.Position;
+            var maxDistance = Mathf.Max(0.1f, _autoCombatConfig.detectionRadius);
+
+            if (_currentTarget != null && (_currentTarget.Model == null || _currentTarget.Model.Health <= 0 || _currentTarget.View == null))
+                _currentTarget = null;
+
+            if (_currentTarget != null)
+            {
+                var chaseDistance = Vector3.Distance(playerPosition, _currentTarget.View.Position);
+                if (chaseDistance <= Mathf.Max(maxDistance, _autoCombatConfig.chaseRadius))
+                {
+                    bestEnemy = _currentTarget;
+                    shortestDistance = chaseDistance;
+                }
+            }
+
+            for (int i = 0; i < _gameManager.Enemies.Count; i++)
+            {
+                var enemy = _gameManager.Enemies[i];
+                if (enemy == null || enemy.Model == null || enemy.View == null)
+                    continue;
+
+                if (enemy.Model.Health <= 0)
+                    continue;
+
+                var distance = Vector3.Distance(playerPosition, enemy.View.Position);
+                if (distance > maxDistance)
+                    continue;
+
+                if (bestEnemy != null && distance >= shortestDistance)
+                    continue;
+
+                shortestDistance = distance;
+                bestEnemy = enemy;
+            }
+
+            if (_currentTarget == bestEnemy)
+                return;
+
+            if (bestEnemy == null && _currentTarget != null)
+                LogCombat($"Target lost: {_currentTarget.View.name}");
+            else if (bestEnemy != null)
+                LogCombat($"Target acquired: {bestEnemy.View.name}");
+
+            _currentTarget = bestEnemy;
+        }
+
+        private void RotateToTarget(Vector3 targetPosition)
+        {
+            if (_view.RotateNode == null)
+            {
+                Debug.LogError("[PlayerCombat] RotateNode is NULL. Cannot rotate towards target.");
+                return;
+            }
+
+            var direction = targetPosition - _view.RotateNode.position;
+            direction.y = 0f;
+            if (direction.sqrMagnitude < 0.0001f)
+                return;
+
+            var targetRotation = Quaternion.LookRotation(direction.normalized);
+            _view.RotateNode.rotation = Quaternion.Lerp(
+                _view.RotateNode.rotation,
+                targetRotation,
+                _model.RotateSpeed * Time.deltaTime);
+        }
+
+        private void TryAttack(float currentTime)
+        {
+            if (_currentTarget == null)
+            {
+                LogCombat("Attack skipped - no target.");
+                return;
+            }
+
+            var cooldown = Mathf.Max(0.01f, _attackConfig.attackCooldown);
+            _nextAttackTime = currentTime + cooldown;
+
+            if (_attackConfig.hitDelay > 0f)
+            {
+                _scheduledHitTarget = _currentTarget;
+                _scheduledHitTime = currentTime + _attackConfig.hitDelay;
+                LogCombat($"Attack scheduled in {_attackConfig.hitDelay:F2}s for {_scheduledHitTarget.View.name}");
+            }
+            else
+            {
+                TryApplyHit(_currentTarget);
+            }
+        }
+
+        private void OnAnimationAttackHit()
+        {
+            if (_scheduledHitTarget == null)
+                return;
+
+            var target = _scheduledHitTarget;
+            _scheduledHitTarget = null;
+            _scheduledHitTime = -1f;
+            TryApplyHit(target);
+        }
+
+        private void TryApplyHit(EnemyController enemy)
+        {
+            if (enemy == null || enemy.Model == null || enemy.View == null)
+            {
+                Debug.LogWarning("[PlayerCombat] Hit failed - target reference is NULL.");
+                return;
+            }
+
+            if (enemy.Model.Health <= 0)
+                return;
+
+            var toEnemy = enemy.View.Position - _view.Position;
+            toEnemy.y = 0f;
+
+            if (!IsInHitArea(toEnemy))
+            {
+                LogCombat($"Hit failed - target {enemy.View.name} outside hit area.");
+                return;
+            }
+
+            var attackValue = _model.GetAttribute(UnitAttributeType.Attack);
+            var damage = Mathf.Max(1, Mathf.RoundToInt(attackValue * Mathf.Max(0f, _attackConfig.damageMultiplier)));
+
+            var direction = toEnemy.sqrMagnitude > 0.0001f ? toEnemy.normalized : _view.RotateNode.forward;
+            enemy.TryToDamage(damage, direction);
+            LogCombat($"Hit success - target={enemy.View.name}, damage={damage}");
+        }
+
+        private bool IsInHitArea(Vector3 toEnemy)
+        {
+            var range = Mathf.Max(0.1f, _attackConfig.attackRange);
+            var planarDistance = new Vector2(toEnemy.x, toEnemy.z).magnitude;
+            if (planarDistance > range)
+                return false;
+
+            var radius = _attackConfig.hitRadius > 0f
+                ? _attackConfig.hitRadius
+                : Mathf.Max(_attackConfig.hitBox.x, _attackConfig.hitBox.z) * 0.5f;
+
+            if (radius <= 0f)
+                radius = range;
+
+            return planarDistance <= radius;
+        }
+
+        private void LogCombat(string message)
+        {
+            if (_autoCombatConfig != null && _autoCombatConfig.enableDebugLogs)
+                Debug.Log($"[PlayerCombat] {message}");
         }
 
         private void Visibility(bool value)

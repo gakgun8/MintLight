@@ -13,6 +13,13 @@ namespace Game.Player
 
             _playerView.FireFootOnGround();
         }
+
+        public void FireAttackHit()
+        {
+            if (_playerView == null)
+                return;
+
+            _playerView.FireAttackHit();
+        }
     }
 }
-

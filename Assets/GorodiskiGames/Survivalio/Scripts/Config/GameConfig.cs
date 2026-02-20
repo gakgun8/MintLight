@@ -41,6 +41,12 @@ namespace Game.Config
 
         private void Init()
         {
+            if (AttackConfig == null)
+                Log.Warning("[GameConfig] AttackConfig is NULL");
+
+            if (AutoCombatConfig == null)
+                Log.Warning("[GameConfig] AutoCombatConfig is NULL");
+
             foreach (EntityType type in Enum.GetValues(typeof(EntityType)))
             {
                 LogEntityMap[type] = false;
@@ -139,6 +145,8 @@ namespace Game.Config
         [Tooltip("Set to true to add all Cloth (from the ClothConfigs list) and Weapons (from the WeaponConfigs list) at the very first start of the game. Made for testing purposes.")]
         public bool AddAllEquipment;
         public PlayerConfig PlayerConfig;
+        public AutoCombatConfig AutoCombatConfig;
+        public AttackConfig AttackConfig;
 
         [Header("Levels")]
         [Tooltip("List of levels in the game. Any new level should be added to this list.")]
@@ -168,4 +176,3 @@ namespace Game.Config
         [SerializeField] private ShopProductIAPConfig[] _shopProductIAPConfigs;
     }
 }
-
