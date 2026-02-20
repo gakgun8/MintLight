@@ -75,8 +75,7 @@ namespace Game.Unit
             if (_bulletNode == null)
                 _bulletNode = _rotateNode;
 
-            if (_renderers == null || _renderers.Length == 0)
-                _renderers = GetComponentsInChildren<Renderer>(true);
+            RefreshRenderersIfNeeded();
 
             if (_animator != null)
             {
@@ -223,8 +222,7 @@ namespace Game.Unit
 
         private bool CacheMaterials()
         {
-            if (_renderers == null || _renderers.Length == 0)
-                _renderers = GetComponentsInChildren<Renderer>(true);
+            RefreshRenderersIfNeeded();
 
             if (_renderers == null || _renderers.Length == 0)
             {
@@ -246,6 +244,26 @@ namespace Game.Unit
             }
 
             return hasMaterial;
+        }
+
+        private void RefreshRenderersIfNeeded()
+        {
+            if (_renderers == null || _renderers.Length == 0 || HasMissingRendererReference())
+                _renderers = GetComponentsInChildren<Renderer>(true);
+        }
+
+        private bool HasMissingRendererReference()
+        {
+            if (_renderers == null)
+                return false;
+
+            for (int i = 0; i < _renderers.Length; i++)
+            {
+                if (_renderers[i] == null)
+                    return true;
+            }
+
+            return false;
         }
 
         private void StopBlink()
