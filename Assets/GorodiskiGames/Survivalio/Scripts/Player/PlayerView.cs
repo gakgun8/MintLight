@@ -31,24 +31,85 @@ namespace Game.Player
         protected override void OnModelChanged(UnitModel model)
         {
             var playerModel = model as PlayerModel;
+            if (playerModel == null)
+                return;
 
             var health = playerModel.GetAttribute(UnitAttributeType.Health);
-            _health.fillAmount = (float)health / playerModel.HealthNominal;
-            _healthText.text = health.ToString();
+            if (_health != null)
+                _health.fillAmount = (float)health / playerModel.HealthNominal;
 
-            bool hasAllClothMeshes = playerModel.HasAllClothMeshes;
-            if (!hasAllClothMeshes)
+            if (_healthText != null)
+                _healthText.text = health.ToString();
+
+            bool canApplyClothMeshes = playerModel.HasAllClothMeshes && HasAllClothRendererBindings();
+            if (!canApplyClothMeshes)
             {
-                _full.sharedMesh = playerModel.FullSkinnedMesh;
-                _head.sharedMesh = null;
+                ApplyFullMesh(playerModel.FullSkinnedMesh);
                 return;
             }
 
-            _helmet.sharedMesh = playerModel.ClothMeshMap[ClothElementType.Helmet];
-            _vest.sharedMesh = playerModel.ClothMeshMap[ClothElementType.Vest];
-            _uniform.sharedMesh = playerModel.ClothMeshMap[ClothElementType.Uniform];
-            _gloves.sharedMesh = playerModel.ClothMeshMap[ClothElementType.Gloves];
-            _shoes.sharedMesh = playerModel.ClothMeshMap[ClothElementType.Shoes];
+            SetSharedMesh(_full, null, nameof(_full));
+            SetSharedMesh(_head, null, nameof(_head));
+            SetSharedMesh(_helmet, playerModel.ClothMeshMap[ClothElementType.Helmet], nameof(_helmet));
+            SetSharedMesh(_vest, playerModel.ClothMeshMap[ClothElementType.Vest], nameof(_vest));
+            SetSharedMesh(_uniform, playerModel.ClothMeshMap[ClothElementType.Uniform], nameof(_uniform));
+            SetSharedMesh(_gloves, playerModel.ClothMeshMap[ClothElementType.Gloves], nameof(_gloves));
+            SetSharedMesh(_shoes, playerModel.ClothMeshMap[ClothElementType.Shoes], nameof(_shoes));
+        }
+
+        private void ApplyFullMesh(Mesh fullMesh)
+        {
+            SetSharedMesh(_helmet, null, nameof(_helmet));
+            SetSharedMesh(_vest, null, nameof(_vest));
+            SetSharedMesh(_uniform, null, nameof(_uniform));
+            SetSharedMesh(_gloves, null, nameof(_gloves));
+            SetSharedMesh(_shoes, null, nameof(_shoes));
+            SetSharedMesh(_head, null, nameof(_head));
+
+            if (_full == null)
+            {
+                Debug.LogWarning($"{nameof(PlayerView)} on '{name}' is missing reference for {nameof(_full)}.", this);
+                return;
+            }
+
+            if (fullMesh == null)
+            {
+                Debug.LogWarning($"{nameof(PlayerView)} on '{name}' could not apply full mesh because model has no {nameof(PlayerModel.FullSkinnedMesh)}.", this);
+                return;
+            }
+
+            _full.sharedMesh = fullMesh;
+        }
+
+        private bool HasAllClothRendererBindings()
+        {
+            bool hasAll = true;
+            hasAll &= ValidateRendererBinding(_helmet, nameof(_helmet));
+            hasAll &= ValidateRendererBinding(_vest, nameof(_vest));
+            hasAll &= ValidateRendererBinding(_uniform, nameof(_uniform));
+            hasAll &= ValidateRendererBinding(_gloves, nameof(_gloves));
+            hasAll &= ValidateRendererBinding(_shoes, nameof(_shoes));
+            return hasAll;
+        }
+
+        private bool ValidateRendererBinding(SkinnedMeshRenderer renderer, string fieldName)
+        {
+            if (renderer != null)
+                return true;
+
+            Debug.LogWarning($"{nameof(PlayerView)} on '{name}' is missing reference for {fieldName}. Falling back to full mesh.", this);
+            return false;
+        }
+
+        private void SetSharedMesh(SkinnedMeshRenderer renderer, Mesh mesh, string fieldName)
+        {
+            if (renderer == null)
+            {
+                Debug.LogWarning($"{nameof(PlayerView)} on '{name}' is missing reference for {fieldName}.", this);
+                return;
+            }
+
+            renderer.sharedMesh = mesh;
         }
 
         public void FireFootOnGround()
