@@ -24,4 +24,4 @@ MonoBehaviour:
   ClothType: 1
   Prefab: {fileID: 4188481306610145162, guid: 9ff704859efe75a4cbc21d421e04ba43, type: 3}
   Mesh: {fileID: -5846485567034733566, guid: 65ababc2d5485fd4da9c58b130e8637a, type: 3}
-  AnimationOverride: {fileID: 0}
+  AnimationOverride: {fileID: 22100000, guid: 74f69f5253568b14eaa1c90e7d0f8077, type: 2}

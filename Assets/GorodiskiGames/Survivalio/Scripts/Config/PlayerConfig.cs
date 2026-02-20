@@ -15,6 +15,7 @@ namespace Game.Config
     [CreateAssetMenu(menuName = "Config/PlayerConfig")]
     public sealed class PlayerConfig : ScriptableObject
     {
+        public AutoCombatConfig autoCombat;
         public Sprite Icon;
         public string Label;
         [Tooltip("The nominal Health of the Player to which the Armor attribute (AttributeType.Armor) from each of Cloth will be added.")]

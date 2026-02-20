@@ -12,12 +12,24 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 773fe96a05baa418889b2279fea40dd2, type: 3}
   m_Name: Chr_001_BD_002
   m_EditorClassIdentifier: Assembly-CSharp::Game.Config.ClothConfig
-  Label: 
-  Icon: {fileID: 0}
+  Label: Body_02
+  Icon: {fileID: 21300000, guid: 8ce9afa89eccb7246a70d4f418b09e29, type: 3}
   Category: 0
-  Index: 0
-  Levels: []
-  ClothType: 2
+  Index: 23
+  Levels:
+  - Price: 50
+    Attributes:
+    - Type: 2
+      Value: 20
+    - Type: 1
+      Value: 50
+  - Price: 150
+    Attributes:
+    - Type: 2
+      Value: 50
+    - Type: 1
+      Value: 100
+  ClothType: 1
   Prefab: {fileID: 4974059823962411432, guid: 5a8c268e02cf0ef4d9897d7805ac9e5d, type: 3}
   Mesh: {fileID: 5235556201429990958, guid: 932cc3f564351e84d9a6686050d3b61b, type: 3}
   AnimationOverride: {fileID: 0}

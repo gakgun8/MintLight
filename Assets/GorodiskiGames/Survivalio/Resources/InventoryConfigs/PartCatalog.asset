@@ -13,23 +13,48 @@ MonoBehaviour:
   m_Name: PartCatalog
   m_EditorClassIdentifier: Assembly-CSharp-Editor::PartCatalog
   entries:
-  - key: Chr_001_SH_002
-    partType: SH
-    prefab: {fileID: 2450460769622985491, guid: 176ae51a019addb43ba8963334501c1a, type: 3}
-    icon: {fileID: 0}
-    fbx: {fileID: 919132149155446097, guid: 6bf546039b3d58243b0764ed45df1f63, type: 3}
-  - key: Chr_001_LG_002
-    partType: LG
-    prefab: {fileID: 8738816904386367810, guid: 60138a0805385974eb5fb069d795899a, type: 3}
-    icon: {fileID: 0}
-    fbx: {fileID: 919132149155446097, guid: d0e5c5546bb2bca479221ec6529fb2f2, type: 3}
-  - key: Chr_001_HD_002
-    partType: HD
-    prefab: {fileID: 6770807148372002804, guid: ffca2102816fed047885d333c6865a5b, type: 3}
-    icon: {fileID: 0}
-    fbx: {fileID: 919132149155446097, guid: 4324723048f85a640b05d625f9963948, type: 3}
+  - key: Chr_001_BD_001
+    partType: BD
+    prefab: {fileID: 4188481306610145162, guid: 9ff704859efe75a4cbc21d421e04ba43, type: 3}
+    icon: {fileID: 21300000, guid: 697eaafe20345dc47ba853ceb2898eac, type: 3}
+    fbx: {fileID: 919132149155446097, guid: 65ababc2d5485fd4da9c58b130e8637a, type: 3}
   - key: Chr_001_BD_002
     partType: BD
     prefab: {fileID: 4974059823962411432, guid: 5a8c268e02cf0ef4d9897d7805ac9e5d, type: 3}
-    icon: {fileID: 0}
+    icon: {fileID: 21300000, guid: 8ce9afa89eccb7246a70d4f418b09e29, type: 3}
     fbx: {fileID: 919132149155446097, guid: 932cc3f564351e84d9a6686050d3b61b, type: 3}
+  - key: Chr_001_BP_001
+    partType: BP
+    prefab: {fileID: 5477828450080838919, guid: 6a59fa545e6ee094c82e3562d308fb91, type: 3}
+    icon: {fileID: 21300000, guid: e254f045d779ab54e893373c53a41edf, type: 3}
+    fbx: {fileID: 919132149155446097, guid: 8f28912478acd0944adafbd6411cb30b, type: 3}
+  - key: Chr_001_HD_001
+    partType: HD
+    prefab: {fileID: 8758676919073685710, guid: 6bd8b977ba451a24d8056af1133ff5fa, type: 3}
+    icon: {fileID: 21300000, guid: 160eee0e960053e49a2bb4670416df0c, type: 3}
+    fbx: {fileID: 919132149155446097, guid: c87d52ef964fff8428ee003c4bcd2ba8, type: 3}
+  - key: Chr_001_HD_002
+    partType: HD
+    prefab: {fileID: 6770807148372002804, guid: ffca2102816fed047885d333c6865a5b, type: 3}
+    icon: {fileID: 21300000, guid: 3da20799494477442a4415e9ae16bfb3, type: 3}
+    fbx: {fileID: 919132149155446097, guid: 4324723048f85a640b05d625f9963948, type: 3}
+  - key: Chr_001_LG_001
+    partType: LG
+    prefab: {fileID: 6191122612164456910, guid: ede5c8a2bd4c2b4459c333bfe51184eb, type: 3}
+    icon: {fileID: 21300000, guid: f03dd063f64ece042a4c91f6865b96ea, type: 3}
+    fbx: {fileID: 919132149155446097, guid: ceeba0cac0040cb45a7f67a14050d8f3, type: 3}
+  - key: Chr_001_LG_002
+    partType: LG
+    prefab: {fileID: 8738816904386367810, guid: 60138a0805385974eb5fb069d795899a, type: 3}
+    icon: {fileID: 21300000, guid: 3293a11c464b0434d99490187324d2e7, type: 3}
+    fbx: {fileID: 919132149155446097, guid: d0e5c5546bb2bca479221ec6529fb2f2, type: 3}
+  - key: Chr_001_SH_001
+    partType: SH
+    prefab: {fileID: 6581528250467400366, guid: ac9999c1a63bd1d43b6f2719b8e07db1, type: 3}
+    icon: {fileID: 21300000, guid: f9a929dc98f6c8446ac5e99623b32a97, type: 3}
+    fbx: {fileID: 919132149155446097, guid: a5bf1043f4954254fa38de560b555da8, type: 3}
+  - key: Chr_001_SH_002
+    partType: SH
+    prefab: {fileID: 2450460769622985491, guid: 176ae51a019addb43ba8963334501c1a, type: 3}
+    icon: {fileID: 21300000, guid: c77fca6b1d7f0464085970abc1a543b2, type: 3}
+    fbx: {fileID: 919132149155446097, guid: 6bf546039b3d58243b0764ed45df1f63, type: 3}

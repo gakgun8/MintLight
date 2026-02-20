@@ -69,8 +69,10 @@ MonoBehaviour:
   - {fileID: 11400000, guid: e42379dc7a570ad4dabdd8248e46dde7, type: 2}
   - {fileID: 11400000, guid: 0ded2283c16379744adec7f236190ce1, type: 2}
   - {fileID: 11400000, guid: e35ffc107d63889499c18ca71b85061a, type: 2}
-  - {fileID: 0}
-  - {fileID: 0}
+  - {fileID: 11400000, guid: cad985bfbf06b224ba4024fe8c9c77ba, type: 2}
+  - {fileID: 11400000, guid: 8120f516c9695ef47aa450e6b9640bf9, type: 2}
+  - {fileID: 11400000, guid: bafb06d39ad4b284ca80e4efaabb408a, type: 2}
+  - {fileID: 11400000, guid: 473a7c876b10fd147aa7293897bc6a75, type: 2}
   MenuHudConfigs:
   - {fileID: 11400000, guid: 142e138e9de9b4397b83e1ae0ca54a37, type: 2}
   - {fileID: 11400000, guid: c8a255fee6ce94be4baa6216d9d4ae5e, type: 2}

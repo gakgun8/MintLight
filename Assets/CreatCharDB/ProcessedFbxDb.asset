@@ -13,19 +13,39 @@ MonoBehaviour:
   m_Name: ProcessedFbxDb
   m_EditorClassIdentifier: Assembly-CSharp-Editor::ProcessedFbxDb
   items:
-  - guid: 6bf546039b3d58243b0764ed45df1f63
-    assetPath: Assets/GorodiskiGames/Survivalio/ResourcesStatic/Models/Units/Chr_001_SH_002.fbx
-    hash: 6bf546039b3d58243b0764ed45df1f63|639070856307822969|1|Import|Generic|NoAvatar
-    lastWriteUtcTicks: 639070856307822969
-  - guid: d0e5c5546bb2bca479221ec6529fb2f2
-    assetPath: Assets/GorodiskiGames/Survivalio/ResourcesStatic/Models/Units/Chr_001_LG_002.fbx
-    hash: d0e5c5546bb2bca479221ec6529fb2f2|639070856300630552|1|Import|Generic|NoAvatar
-    lastWriteUtcTicks: 639070856300630552
-  - guid: 4324723048f85a640b05d625f9963948
-    assetPath: Assets/GorodiskiGames/Survivalio/ResourcesStatic/Models/Units/Chr_001_HD_002.fbx
-    hash: 4324723048f85a640b05d625f9963948|639070856278103838|1|Import|Generic|NoAvatar
-    lastWriteUtcTicks: 639070856278103838
+  - guid: 65ababc2d5485fd4da9c58b130e8637a
+    assetPath: Assets/GorodiskiGames/Survivalio/ResourcesStatic/Models/Units/Chr_001_BD_001.fbx
+    hash: 65ababc2d5485fd4da9c58b130e8637a|639070028349871093|1|Import|Generic|NoAvatar
+    lastWriteUtcTicks: 639070028349871093
   - guid: 932cc3f564351e84d9a6686050d3b61b
     assetPath: Assets/GorodiskiGames/Survivalio/ResourcesStatic/Models/Units/Chr_001_BD_002.fbx
     hash: 932cc3f564351e84d9a6686050d3b61b|639070856293123810|1|Import|Generic|NoAvatar
     lastWriteUtcTicks: 639070856293123810
+  - guid: 8f28912478acd0944adafbd6411cb30b
+    assetPath: Assets/GorodiskiGames/Survivalio/ResourcesStatic/Models/Units/Chr_001_BP_001.fbx
+    hash: 8f28912478acd0944adafbd6411cb30b|639070028355912189|1|Import|Generic|NoAvatar
+    lastWriteUtcTicks: 639070028355912189
+  - guid: c87d52ef964fff8428ee003c4bcd2ba8
+    assetPath: Assets/GorodiskiGames/Survivalio/ResourcesStatic/Models/Units/Chr_001_HD_001.fbx
+    hash: c87d52ef964fff8428ee003c4bcd2ba8|639070028343492684|1|Import|Generic|NoAvatar
+    lastWriteUtcTicks: 639070028343492684
+  - guid: 4324723048f85a640b05d625f9963948
+    assetPath: Assets/GorodiskiGames/Survivalio/ResourcesStatic/Models/Units/Chr_001_HD_002.fbx
+    hash: 4324723048f85a640b05d625f9963948|639070856278103838|1|Import|Generic|NoAvatar
+    lastWriteUtcTicks: 639070856278103838
+  - guid: ceeba0cac0040cb45a7f67a14050d8f3
+    assetPath: Assets/GorodiskiGames/Survivalio/ResourcesStatic/Models/Units/Chr_001_LG_001.fbx
+    hash: ceeba0cac0040cb45a7f67a14050d8f3|639070028352848329|1|Import|Generic|NoAvatar
+    lastWriteUtcTicks: 639070028352848329
+  - guid: d0e5c5546bb2bca479221ec6529fb2f2
+    assetPath: Assets/GorodiskiGames/Survivalio/ResourcesStatic/Models/Units/Chr_001_LG_002.fbx
+    hash: d0e5c5546bb2bca479221ec6529fb2f2|639070856300630552|1|Import|Generic|NoAvatar
+    lastWriteUtcTicks: 639070856300630552
+  - guid: a5bf1043f4954254fa38de560b555da8
+    assetPath: Assets/GorodiskiGames/Survivalio/ResourcesStatic/Models/Units/Chr_001_SH_001.fbx
+    hash: a5bf1043f4954254fa38de560b555da8|639070028358869158|1|Import|Generic|NoAvatar
+    lastWriteUtcTicks: 639070028358869158
+  - guid: 6bf546039b3d58243b0764ed45df1f63
+    assetPath: Assets/GorodiskiGames/Survivalio/ResourcesStatic/Models/Units/Chr_001_SH_002.fbx
+    hash: 6bf546039b3d58243b0764ed45df1f63|639070856307822969|1|Import|Generic|NoAvatar
+    lastWriteUtcTicks: 639070856307822969

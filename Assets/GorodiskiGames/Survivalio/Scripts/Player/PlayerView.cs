@@ -11,16 +11,15 @@ namespace Game.Player
     {
         public event Action ON_FOOT_ON_GROUND;
 
-        // ✅ 디버그/툴에서 접근할 모델 캐시
-        private PlayerModel _debugModel;
-        public PlayerModel DebugModel => _debugModel;
+        // ✅ (추가) 공격 히트 이벤트를 컨트롤러로 전달
+        public event Action<int> ON_ATTACK_HIT;
 
-        // (선택) 디버그툴에서 편하게 부르라고 별칭 제공
-        public PlayerModel GetPlayerModel() => _debugModel;
+        // ✅ (추가) Inspector에서 AutoCombatConfig 연결하기 위한 필드
+        [SerializeField] private AutoCombatConfig _autoCombatConfig;
+        public AutoCombatConfig AutoCombatConfig => _autoCombatConfig;
 
         [SerializeField] private Image _health;
         [SerializeField] private TMP_Text _healthText;
-
         [SerializeField] private SkinnedMeshRenderer _full;
         [SerializeField] private SkinnedMeshRenderer _head;
         [SerializeField] private SkinnedMeshRenderer _helmet;
@@ -29,87 +28,42 @@ namespace Game.Player
         [SerializeField] private SkinnedMeshRenderer _gloves;
         [SerializeField] private SkinnedMeshRenderer _shoes;
 
-        [SerializeField] private Transform animatorNode;   // Player/RotateNode/AnimatorNode
-        [SerializeField] private Transform partsRoot;      // AnimatorNode/PartsRoot
-
-        private Transform skeletonRoot;
-        private GameObject _helmetObj, _vestObj, _uniformObj, _glovesObj, _shoesObj;
-        private GameObject _helmetPrefab, _vestPrefab, _uniformPrefab, _glovesPrefab, _shoesPrefab;
-
-        protected override void Awake()
-        {
-            base.Awake();
-            skeletonRoot = animatorNode != null ? animatorNode.Find("Bip001") : null;
-        }
-
-        private void ReplacePartIfNeeded(ref GameObject slotObj, ref GameObject cachedPrefab, string slotName, GameObject prefab)
-        {
-            if (cachedPrefab == prefab)
-                return;
-
-            cachedPrefab = prefab;
-            ReplacePart(ref slotObj, slotName, prefab);
-        }
-
-        private void ReplacePart(ref GameObject slotObj, string slotName, GameObject prefab)
-        {
-            if (slotObj != null)
-                Destroy(slotObj);
-
-            if (prefab == null)
-                return;
-
-            GameObject go = Instantiate(prefab, partsRoot);
-            go.name = slotName;
-
-            go.transform.localPosition = Vector3.zero;
-            go.transform.localRotation = Quaternion.identity;
-            go.transform.localScale = Vector3.one;
-
-            // skeletonRoot가 없으면 바인딩 불가
-            if (skeletonRoot != null)
-                PartBinder.BindSkinnedMeshes(go, skeletonRoot, "Bip001 Pelvis");
-
-            slotObj = go;
-        }
-
         protected override void OnModelChanged(UnitModel model)
         {
-            // ✅ 캐시부터
-            _debugModel = model as PlayerModel;
-
-            var playerModel = _debugModel;
-            if (playerModel == null)
-                return;
+            var playerModel = model as PlayerModel;
 
             var health = playerModel.GetAttribute(UnitAttributeType.Health);
-            if (_health != null)
-                _health.fillAmount = (float)health / playerModel.HealthNominal;
-            if (_healthText != null)
-                _healthText.text = health.ToString();
+            _health.fillAmount = (float)health / playerModel.HealthNominal;
+            _healthText.text = health.ToString();
 
-            if (playerModel.ClothPrefabMap != null)
+            bool hasAllClothMeshes = playerModel.HasAllClothMeshes;
+            if (!hasAllClothMeshes)
             {
-                var helmetPrefab = playerModel.ClothPrefabMap.TryGetValue(ClothElementType.Helmet, out var helmetPrefabValue) ? helmetPrefabValue : null;
-                ReplacePartIfNeeded(ref _helmetObj, ref _helmetPrefab, "Helmet", helmetPrefab);
-
-                var vestPrefab = playerModel.ClothPrefabMap.TryGetValue(ClothElementType.Vest, out var vestPrefabValue) ? vestPrefabValue : null;
-                ReplacePartIfNeeded(ref _vestObj, ref _vestPrefab, "Vest", vestPrefab);
-
-                var uniformPrefab = playerModel.ClothPrefabMap.TryGetValue(ClothElementType.Uniform, out var uniformPrefabValue) ? uniformPrefabValue : null;
-                ReplacePartIfNeeded(ref _uniformObj, ref _uniformPrefab, "Uniform", uniformPrefab);
-
-                var glovesPrefab = playerModel.ClothPrefabMap.TryGetValue(ClothElementType.Gloves, out var glovesPrefabValue) ? glovesPrefabValue : null;
-                ReplacePartIfNeeded(ref _glovesObj, ref _glovesPrefab, "Gloves", glovesPrefab);
-
-                var shoesPrefab = playerModel.ClothPrefabMap.TryGetValue(ClothElementType.Shoes, out var shoesPrefabValue) ? shoesPrefabValue : null;
-                ReplacePartIfNeeded(ref _shoesObj, ref _shoesPrefab, "Shoes", shoesPrefab);
+                _full.sharedMesh = playerModel.FullSkinnedMesh;
+                _head.sharedMesh = null;
+                return;
             }
+
+            _helmet.sharedMesh = playerModel.ClothMeshMap[ClothElementType.Helmet];
+            _vest.sharedMesh = playerModel.ClothMeshMap[ClothElementType.Vest];
+            _uniform.sharedMesh = playerModel.ClothMeshMap[ClothElementType.Uniform];
+            _gloves.sharedMesh = playerModel.ClothMeshMap[ClothElementType.Gloves];
+            _shoes.sharedMesh = playerModel.ClothMeshMap[ClothElementType.Shoes];
         }
 
         public void FireFootOnGround()
         {
             ON_FOOT_ON_GROUND?.Invoke();
         }
+
+        // ✅ (추가) 애니메이션 이벤트에서 호출할 함수들
+        // attack_01 클립 이벤트에서 FireAttack01Hit 호출
+        public void FireAttack01Hit() => ON_ATTACK_HIT?.Invoke(0);
+
+        // attack_02 클립 이벤트에서 FireAttack02Hit 호출
+        public void FireAttack02Hit() => ON_ATTACK_HIT?.Invoke(1);
+
+        // attack_03 클립 이벤트에서 FireAttack03Hit 호출
+        public void FireAttack03Hit() => ON_ATTACK_HIT?.Invoke(2);
     }
 }
