@@ -11,7 +11,7 @@ namespace Game.Cloth
         public AnimatorOverrideController AnimationOverride;
         public GameObject Prefab;
 
-        public float Armor => Attributes[AttributeType.Armor];
+        public float Armor => Attributes.TryGetValue(AttributeType.Armor, out var armor) ? armor : 0f;
 
         public ClothModel(ClothConfig config, int serial, int level) : base(config, serial, level)
         {
@@ -34,4 +34,3 @@ namespace Game.Cloth
 
     }
 }
-
