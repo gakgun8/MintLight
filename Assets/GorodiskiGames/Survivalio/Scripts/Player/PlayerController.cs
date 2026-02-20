@@ -169,7 +169,7 @@ namespace Game.Player
         private const string _damageFormat = "-{0}";
         private const float _distance = 1.5f;
         private const float _speed = 15f;
-        private const float COMBO_RESET_WINDOW = 0.9f;
+        private const float DASH_SKIN = 0.02f;
 
         private readonly PlayerView _view;
         private readonly PlayerModel _model;
@@ -190,11 +190,11 @@ namespace Game.Player
         private EnemyController _currentTarget;
         private float _nextScanTime;
         private float _nextAttackTime;
+        private float _scheduledHitTime = -1f;
         private float _lastCooldownLogTime = -999f;
-        private int _comboIndex;
-        private float _lastAttackTime = -999f;
-        private UnitController _pendingHitTarget;
-        private GameManager _pendingHitGameManager;
+        private EnemyController _scheduledHitTarget;
+        private bool _awaitingAnimationHit;
+        private Coroutine _dashCoroutine;
 
         public PlayerController(PlayerView view, PlayerModel model, Context context) : base(view)
         {
@@ -231,14 +231,23 @@ namespace Game.Player
             Visibility(true);
             _view.SetCollider(true);
 
-            _view.ON_ATTACK_HIT += OnAttackHit;
+            _view.ON_ATTACK_HIT += OnAnimationAttackHit;
+            _view.ON_ATTACK_DASH += OnAttackDash;
             _timer.TICK += OnTick;
         }
 
         public void Dispose()
         {
             _timer.TICK -= OnTick;
-            _view.ON_ATTACK_HIT -= OnAttackHit;
+            _view.ON_ATTACK_HIT -= OnAnimationAttackHit;
+            _view.ON_ATTACK_DASH -= OnAttackDash;
+
+            if (_dashCoroutine != null)
+            {
+                _view.StopCoroutine(_dashCoroutine);
+                _dashCoroutine = null;
+            }
+
             _stateManager.Dispose();
             Visibility(false);
         }
@@ -249,6 +258,16 @@ namespace Game.Player
                 return;
 
             var currentTime = _timer.Time;
+
+            if (_scheduledHitTarget != null && currentTime >= _scheduledHitTime)
+            {
+                LogCombat("Attack fallback hitDelay elapsed. Applying fallback hit.");
+                var hitTarget = _scheduledHitTarget;
+                _awaitingAnimationHit = false;
+                _scheduledHitTarget = null;
+                _scheduledHitTime = -1f;
+                TryApplyHit(hitTarget);
+            }
 
             if (currentTime >= _nextScanTime)
             {
@@ -371,62 +390,171 @@ namespace Game.Player
             var cooldown = Mathf.Max(0.01f, _attackConfig.attackCooldown);
             _nextAttackTime = currentTime + cooldown;
 
-            StartAttackCombo(_currentTarget, _gameManager);
-        }
+            _view.Attack();
+            LogCombat($"Attack() called for target={_currentTarget.View.name}");
 
-        public void StartAttackCombo(UnitController target, GameManager gameManager)
-        {
-            if (target == null)
-                return;
+            _awaitingAnimationHit = true;
+            _scheduledHitTarget = _currentTarget;
 
-            _pendingHitTarget = target;
-            _pendingHitGameManager = gameManager;
-
-            if (Time.time - _lastAttackTime > COMBO_RESET_WINDOW)
-                _comboIndex = 0;
-
-            _comboIndex = (_comboIndex % 3) + 1;
-            _lastAttackTime = Time.time;
-
-            _view.PlayAttackCombo(_comboIndex);
-            var targetName = target.View != null ? target.View.name : "NULL";
-            Debug.Log($"[PlayerCombat] StartAttackCombo combo={_comboIndex}, target={targetName}");
-        }
-
-        private void OnAttackHit()
-        {
-            Debug.Log("[PlayerCombat] OnAttackHit received.");
-
-            if (_pendingHitTarget == null)
-                return;
-
-            if (!(_pendingHitTarget is EnemyController enemy))
+            if (_attackConfig.hitDelay > 0f)
             {
-                Debug.LogWarning("[PlayerCombat] TODO: Unsupported target type for attack hit. Connect existing damage API for this UnitController type.");
-                _pendingHitTarget = null;
-                _pendingHitGameManager = null;
+                _scheduledHitTime = currentTime + _attackConfig.hitDelay;
+                LogCombat($"Attack scheduled in {_attackConfig.hitDelay:F2}s for {_scheduledHitTarget.View.name}");
+            }
+            else
+            {
+                LogCombat("Attack fallback hitDelay=0. Applying immediate fallback hit.");
+                var target = _scheduledHitTarget;
+                _awaitingAnimationHit = false;
+                _scheduledHitTarget = null;
+                _scheduledHitTime = -1f;
+                TryApplyHit(target);
+            }
+        }
+
+        private void OnAnimationAttackHit()
+        {
+            if (!_awaitingAnimationHit || _scheduledHitTarget == null)
+                return;
+
+            LogCombat("ON_ATTACK_HIT received. Applying hit by animation event.");
+
+            var target = _scheduledHitTarget;
+            _awaitingAnimationHit = false;
+            _scheduledHitTarget = null;
+            _scheduledHitTime = -1f;
+            TryApplyHit(target);
+        }
+
+        private void OnAttackDash()
+        {
+            if (_attackConfig == null)
+                return;
+
+            var move = _attackConfig.move;
+            if (!move.enabled)
+                return;
+
+            var duration = Mathf.Max(0.01f, move.duration);
+            var distance = Mathf.Max(0f, move.distance);
+            if (distance <= 0.001f)
+                return;
+
+            if (_dashCoroutine != null)
+                _view.StopCoroutine(_dashCoroutine);
+
+            _dashCoroutine = _view.StartCoroutine(DashCoroutine(distance, duration, move.curve));
+        }
+
+        private System.Collections.IEnumerator DashCoroutine(float distance, float duration, AnimationCurve curve)
+        {
+            var direction = (_view.RotateNode != null ? _view.RotateNode.forward : _view.transform.forward);
+            direction.y = 0f;
+            if (direction.sqrMagnitude < 0.0001f)
+            {
+                _dashCoroutine = null;
+                yield break;
+            }
+
+            direction.Normalize();
+
+            float allowedDistance = ComputeAllowedDashDistance(direction, distance);
+            if (allowedDistance <= 0.001f)
+            {
+                _dashCoroutine = null;
+                yield break;
+            }
+
+            bool hasCurve = curve != null && curve.keys != null && curve.keys.Length > 0;
+
+            Vector3 start = _view.Position;
+            float time = 0f;
+
+            while (time < duration)
+            {
+                float t = Mathf.Clamp01(time / duration);
+                float k = hasCurve ? Mathf.Clamp01(curve.Evaluate(t)) : t;
+
+                Vector3 target = start + direction * (allowedDistance * k);
+                _view.Position = target;
+
+                time += Time.deltaTime;
+                yield return null;
+            }
+
+            _view.Position = start + direction * allowedDistance;
+            _dashCoroutine = null;
+        }
+
+        private float ComputeAllowedDashDistance(Vector3 direction, float desiredDistance)
+        {
+            var collider = _view.GetComponent<CapsuleCollider>();
+            if (collider == null)
+                return desiredDistance;
+
+            Vector3 center = _view.transform.TransformPoint(collider.center);
+
+            float scaleXZ = Mathf.Max(_view.transform.lossyScale.x, _view.transform.lossyScale.z);
+            float radius = collider.radius * scaleXZ;
+
+            float height = Mathf.Max(collider.height * _view.transform.lossyScale.y, radius * 2f);
+            float half = Mathf.Max(0f, (height * 0.5f) - radius);
+
+            Vector3 p1 = center + Vector3.up * half;
+            Vector3 p2 = center - Vector3.up * half;
+
+            if (Physics.CapsuleCast(p1, p2, radius, direction, out RaycastHit hit, desiredDistance, ~0, QueryTriggerInteraction.Ignore))
+            {
+                float adjustedDistance = Mathf.Max(0f, hit.distance - DASH_SKIN);
+                return adjustedDistance;
+            }
+
+            return desiredDistance;
+        }
+
+        private void TryApplyHit(EnemyController enemy)
+        {
+            if (enemy == null || enemy.Model == null || enemy.View == null)
+            {
+                Debug.LogWarning("[PlayerCombat] Hit failed - target reference is NULL.");
                 return;
             }
 
-            if (enemy.Model == null || enemy.View == null || enemy.Model.Health <= 0)
+            if (enemy.Model.Health <= 0)
+                return;
+
+            var toEnemy = enemy.View.Position - _view.Position;
+            toEnemy.y = 0f;
+
+            if (!IsInHitArea(toEnemy))
             {
-                _pendingHitTarget = null;
-                _pendingHitGameManager = null;
+                LogCombat($"Hit failed - target {enemy.View.name} outside hit area.");
                 return;
             }
 
             var attackValue = _model.GetAttribute(UnitAttributeType.Attack);
-            var damage = Mathf.Max(1, Mathf.RoundToInt(attackValue));
+            var damage = Mathf.Max(1, Mathf.RoundToInt(attackValue * Mathf.Max(0f, _attackConfig.damageMultiplier)));
 
-            var direction = enemy.View.Position - _view.Position;
-            direction.y = 0f;
-            direction = direction.sqrMagnitude > 0.0001f ? direction.normalized : _view.RotateNode.forward;
-
+            var direction = toEnemy.sqrMagnitude > 0.0001f ? toEnemy.normalized : _view.RotateNode.forward;
             enemy.TryToDamage(damage, direction);
-            Debug.Log($"[PlayerCombat] Damage applied. target={enemy.View.name}, damage={damage}");
+            LogCombat($"Hit success - target={enemy.View.name}, damage={damage}");
+        }
 
-            _pendingHitTarget = null;
-            _pendingHitGameManager = null;
+        private bool IsInHitArea(Vector3 toEnemy)
+        {
+            var range = Mathf.Max(0.1f, _attackConfig.attackRange);
+            var planarDistance = new Vector2(toEnemy.x, toEnemy.z).magnitude;
+            if (planarDistance > range)
+                return false;
+
+            var radius = _attackConfig.hitRadius > 0f
+                ? _attackConfig.hitRadius
+                : Mathf.Max(_attackConfig.hitBox.x, _attackConfig.hitBox.z) * 0.5f;
+
+            if (radius <= 0f)
+                radius = range;
+
+            return planarDistance <= radius;
         }
 
         private void LogCombat(string message)
