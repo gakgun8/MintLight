@@ -30,7 +30,7 @@ namespace Game.UI.Hud
 
             rawCameraView = result;
 
-            rawImage.texture = _rawCamera.Camera.targetTexture;
+            rawImage.texture = result.Camera.targetTexture;
             rawImage.gameObject.SetActive(true);
         }
 
@@ -41,4 +41,3 @@ namespace Game.UI.Hud
         }
     }
 }
-
