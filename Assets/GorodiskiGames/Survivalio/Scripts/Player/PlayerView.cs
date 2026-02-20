@@ -11,6 +11,7 @@ namespace Game.Player
     {
         public event Action ON_FOOT_ON_GROUND;
         public event Action ON_ATTACK_HIT;
+        public event Action ON_ATTACK_DASH;
 
         // ✅ 디버그/툴에서 접근할 모델 캐시
         private PlayerModel _debugModel;
@@ -116,6 +117,11 @@ namespace Game.Player
         public void FireAttackHit()
         {
             ON_ATTACK_HIT?.Invoke();
+        }
+
+        public void FireAttackDash()
+        {
+            ON_ATTACK_DASH?.Invoke();
         }
     }
 }
