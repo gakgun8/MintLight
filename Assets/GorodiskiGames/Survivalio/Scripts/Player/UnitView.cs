@@ -129,8 +129,49 @@ namespace Game.Unit
             PlayAnimation(AnimatorStateType.Die, float.NegativeInfinity);
         }
 
+        private int _nextAttackAnimationIndex;
+
         public void Attack(float normalizedTime = float.NegativeInfinity)
         {
+            if (_animator == null)
+                return;
+
+            var attackHashes = new[]
+            {
+                Animator.StringToHash("Attack_01"),
+                Animator.StringToHash("Attack_02"),
+                Animator.StringToHash("Attack_03")
+            };
+
+            int availableCount = 0;
+            for (int i = 0; i < attackHashes.Length; i++)
+            {
+                if (_animator.HasState(0, attackHashes[i]))
+                    availableCount++;
+            }
+
+            if (availableCount > 0)
+            {
+                int pick = _nextAttackAnimationIndex % availableCount;
+                _nextAttackAnimationIndex++;
+
+                for (int i = 0, seen = 0; i < attackHashes.Length; i++)
+                {
+                    if (!_animator.HasState(0, attackHashes[i]))
+                        continue;
+
+                    if (seen == pick)
+                    {
+                        _animator.PlayInFixedTime(attackHashes[i], 0, normalizedTime);
+                        if (ShouldForceImmediateAnimatorUpdate(AnimatorStateType.Attack))
+                            _animator.Update(0);
+                        return;
+                    }
+
+                    seen++;
+                }
+            }
+
             PlayAnimation(AnimatorStateType.Attack, normalizedTime);
         }
 
