@@ -192,6 +192,7 @@ namespace Game.Player
         private float _scheduledHitTime = -1f;
         private float _lastCooldownLogTime = -999f;
         private EnemyController _scheduledHitTarget;
+        private bool _awaitingAnimationHit;
 
         public PlayerController(PlayerView view, PlayerModel model, Context context) : base(view)
         {
@@ -247,7 +248,9 @@ namespace Game.Player
 
             if (_scheduledHitTarget != null && currentTime >= _scheduledHitTime)
             {
+                LogCombat("Attack fallback hitDelay elapsed. Applying fallback hit.");
                 var hitTarget = _scheduledHitTarget;
+                _awaitingAnimationHit = false;
                 _scheduledHitTarget = null;
                 _scheduledHitTime = -1f;
                 TryApplyHit(hitTarget);
@@ -371,24 +374,37 @@ namespace Game.Player
             var cooldown = Mathf.Max(0.01f, _attackConfig.attackCooldown);
             _nextAttackTime = currentTime + cooldown;
 
+            _view.Attack();
+            LogCombat($"Attack() called for target={_currentTarget.View.name}");
+
+            _awaitingAnimationHit = true;
+            _scheduledHitTarget = _currentTarget;
+
             if (_attackConfig.hitDelay > 0f)
             {
-                _scheduledHitTarget = _currentTarget;
                 _scheduledHitTime = currentTime + _attackConfig.hitDelay;
                 LogCombat($"Attack scheduled in {_attackConfig.hitDelay:F2}s for {_scheduledHitTarget.View.name}");
             }
             else
             {
-                TryApplyHit(_currentTarget);
+                LogCombat("Attack fallback hitDelay=0. Applying immediate fallback hit.");
+                var target = _scheduledHitTarget;
+                _awaitingAnimationHit = false;
+                _scheduledHitTarget = null;
+                _scheduledHitTime = -1f;
+                TryApplyHit(target);
             }
         }
 
         private void OnAnimationAttackHit()
         {
-            if (_scheduledHitTarget == null)
+            if (!_awaitingAnimationHit || _scheduledHitTarget == null)
                 return;
 
+            LogCombat("ON_ATTACK_HIT received. Applying hit by animation event.");
+
             var target = _scheduledHitTarget;
+            _awaitingAnimationHit = false;
             _scheduledHitTarget = null;
             _scheduledHitTime = -1f;
             TryApplyHit(target);

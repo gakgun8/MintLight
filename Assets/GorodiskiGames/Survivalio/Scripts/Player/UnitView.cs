@@ -7,6 +7,7 @@ namespace Game.Unit
 {
     public enum AnimatorStateType
     {
+        Attack,
         Walk,
         Jump,
         Die,
@@ -123,6 +124,11 @@ namespace Game.Unit
         public void Die()
         {
             PlayAnimation(AnimatorStateType.Die, float.NegativeInfinity);
+        }
+
+        public void Attack(float normalizedTime = float.NegativeInfinity)
+        {
+            PlayAnimation(AnimatorStateType.Attack, normalizedTime);
         }
 
         private void PlayAnimation(AnimatorStateType animationState, float timeValue)
