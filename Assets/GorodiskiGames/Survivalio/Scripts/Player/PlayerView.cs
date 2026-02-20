@@ -31,24 +31,40 @@ namespace Game.Player
         protected override void OnModelChanged(UnitModel model)
         {
             var playerModel = model as PlayerModel;
+            if (playerModel == null)
+                return;
 
             var health = playerModel.GetAttribute(UnitAttributeType.Health);
-            _health.fillAmount = (float)health / playerModel.HealthNominal;
-            _healthText.text = health.ToString();
+            if (_health != null)
+                _health.fillAmount = (float)health / playerModel.HealthNominal;
+
+            if (_healthText != null)
+                _healthText.text = health.ToString();
 
             bool hasAllClothMeshes = playerModel.HasAllClothMeshes;
             if (!hasAllClothMeshes)
             {
-                _full.sharedMesh = playerModel.FullSkinnedMesh;
-                _head.sharedMesh = null;
+                SetSharedMesh(_full, playerModel.FullSkinnedMesh, nameof(_full));
+                SetSharedMesh(_head, null, nameof(_head));
                 return;
             }
 
-            _helmet.sharedMesh = playerModel.ClothMeshMap[ClothElementType.Helmet];
-            _vest.sharedMesh = playerModel.ClothMeshMap[ClothElementType.Vest];
-            _uniform.sharedMesh = playerModel.ClothMeshMap[ClothElementType.Uniform];
-            _gloves.sharedMesh = playerModel.ClothMeshMap[ClothElementType.Gloves];
-            _shoes.sharedMesh = playerModel.ClothMeshMap[ClothElementType.Shoes];
+            SetSharedMesh(_helmet, playerModel.ClothMeshMap[ClothElementType.Helmet], nameof(_helmet));
+            SetSharedMesh(_vest, playerModel.ClothMeshMap[ClothElementType.Vest], nameof(_vest));
+            SetSharedMesh(_uniform, playerModel.ClothMeshMap[ClothElementType.Uniform], nameof(_uniform));
+            SetSharedMesh(_gloves, playerModel.ClothMeshMap[ClothElementType.Gloves], nameof(_gloves));
+            SetSharedMesh(_shoes, playerModel.ClothMeshMap[ClothElementType.Shoes], nameof(_shoes));
+        }
+
+        private void SetSharedMesh(SkinnedMeshRenderer renderer, Mesh mesh, string fieldName)
+        {
+            if (renderer == null)
+            {
+                Debug.LogWarning($"{nameof(PlayerView)} on '{name}' is missing reference for {fieldName}.", this);
+                return;
+            }
+
+            renderer.sharedMesh = mesh;
         }
 
         public void FireFootOnGround()
