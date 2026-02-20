@@ -15,9 +15,6 @@ using UnityEngine;
 
 namespace Game.Player
 {
-
-
-
     public enum UnitAttributeType
     {
         Attack,
@@ -166,12 +163,7 @@ namespace Game.Player
 
     public sealed class PlayerController : UnitController, IDisposable
     {
-        private AutoCombatConfig autoCombatConfig;   // ✅ 런타임 참조로 변경
-        private AttackConfig currentAttack;
-        private Transform currentTarget;
-
-        public event Action ON_DAMAGE;
-
+        public event Action ON_DAMAGE; //used in the DamageBorderHudMediator
 
         private const string _damageFormat = "-{0}";
         private const float _distance = 1.5f;
@@ -194,12 +186,6 @@ namespace Game.Player
             _view = view;
             _model = model;
 
-            // ✅ (추가) Inspector에서 PlayerView에 연결한 AutoCombatConfig를 여기서 받아옴
-            autoCombatConfig = _view.AutoCombatConfig;
-
-            // ✅ (추가) 애니 이벤트(=PlayerView.FireAttackXXHit) 수신
-            _view.ON_ATTACK_HIT += OnAttackHit;
-
             var subContext = new Context(context);
             var injector = new Injector(subContext);
 
@@ -221,62 +207,8 @@ namespace Game.Player
 
         public void Dispose()
         {
-            // ✅ (추가) 구독 해제
-            if (_view != null) _view.ON_ATTACK_HIT -= OnAttackHit;
-
             _stateManager.Dispose();
             Visibility(false);
-        }
-
-        private void OnAttackHit(int comboIndex)
-        {
-            if (autoCombatConfig == null || autoCombatConfig.combo == null) return;
-            if (comboIndex < 0 || comboIndex >= autoCombatConfig.combo.Length) return;
-
-            currentAttack = autoCombatConfig.combo[comboIndex];
-            if (currentAttack == null) return;
-
-            ExecuteAttack(currentAttack);
-        }
-
-        private void ExecuteAttack(AttackConfig attack)
-        {
-            // 공격 방향은 RotateNode 기준이 자연스러움
-            Vector3 forward = _view.RotateNode.forward;
-
-            // originOffset을 “로컬 오프셋”으로 보고, RotateNode 기준으로 월드 변환
-            Vector3 origin = _view.Position + _view.RotateNode.TransformVector(attack.originOffset);
-
-            // (임시) Sector만 먼저 처리 (Circle/LineBox는 다음 단계에서 확장)
-            float radius = attack.sector.radius;
-            float halfAngle = attack.sector.angle * 0.5f;
-
-            Collider[] hits = Physics.OverlapSphere(origin, radius, attack.targetMask);
-
-            int count = 0;
-            foreach (var hit in hits)
-            {
-                // 타겟 방향각 필터
-                Vector3 to = (hit.transform.position - _view.Position);
-                to.y = 0f;
-                if (to.sqrMagnitude < 0.0001f) continue;
-
-                float ang = Vector3.Angle(forward, to.normalized);
-                if (ang > halfAngle) continue;
-
-                // ✅ 여기서 데미지 적용(몹 스크립트에 맞춰 연결)
-                // hit.GetComponent<EnemyController>()?.TryToDamage(...);
-
-                // ✅ 넉백 (attack_03 등)
-                if (attack.knockback.enabled)
-                {
-                    Vector3 dir = to.normalized;
-                    hit.transform.position += dir * attack.knockback.distance;
-                }
-
-                count++;
-                if (count >= attack.maxTargets) break;
-            }
         }
 
         private void Visibility(bool value)
