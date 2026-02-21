@@ -439,10 +439,7 @@ namespace Game.Player
         private void StopAutoMovement()
         {
             if (!_isAutoMoving)
-            {
-                _view.SetMoveSpeed(0f);
                 return;
-            }
 
             _isAutoMoving = false;
             _view.SetMoveSpeed(0f);
@@ -519,7 +516,9 @@ namespace Game.Player
             var attackConfig = _currentAttackConfig != null ? _currentAttackConfig : _attackConfig;
             var targets = ResolveAttackTargets(attackConfig);
 
-            if (targets.Count == 0 && _pendingHitTarget is EnemyController pendingEnemy)
+            // ShapeType 판정을 통과한 대상이 없으면 공격은 빗나가야 한다.
+            // (fallback 강제 타격은 hit shape 설정을 무시하게 만들 수 있음)
+            if (attackConfig == null && targets.Count == 0 && _pendingHitTarget is EnemyController pendingEnemy)
                 targets.Add(pendingEnemy);
 
             if (targets.Count == 0)
