@@ -265,15 +265,21 @@ namespace Game.Player
                 _nextScanTime = currentTime + Mathf.Max(0.05f, _autoCombatConfig.targetScanInterval);
             }
 
+            var hasManualInput = _stateManager.Current is PlayerWalkState;
+
             if (_currentTarget == null)
             {
                 StopAutoMovement();
                 ResetComboChain();
 
-                if (!_view.IsAttackPlaying || _view.CurrentAttackNormalizedTime >= 0.98f)
-                    _view.Idle();
+                if (!hasManualInput)
+                {
+                    if (!_view.IsAttackPlaying || _view.CurrentAttackNormalizedTime >= 0.98f)
+                        _view.Idle();
 
-                _view.SetMoveSpeed(0f);
+                    _view.SetMoveSpeed(0f);
+                }
+
                 _hadTargetLastTick = false;
                 return;
             }
@@ -288,7 +294,8 @@ namespace Game.Player
 
             RotateToTarget(targetPosition);
 
-            if (distance > desiredRange)
+            // 공격 가능 거리 안에 들어오면 자동 이동 없이 즉시 공격 로직으로 진입한다.
+            if (distance > attackRange)
             {
                 HandleApproach(targetPosition, desiredRange);
                 return;
@@ -415,6 +422,7 @@ namespace Game.Player
             _view.Position += direction * moveSpeed * Time.deltaTime;
 
             _view.SetMoveSpeed(1f);
+            _view.Walk();
             if (!_comboResetByMovement)
             {
                 ResetComboChain();
@@ -423,7 +431,6 @@ namespace Game.Player
 
             if (!_isAutoMoving)
             {
-                _view.Walk();
                 _isAutoMoving = true;
                 LogCombat("Auto approach started.");
             }
@@ -432,10 +439,7 @@ namespace Game.Player
         private void StopAutoMovement()
         {
             if (!_isAutoMoving)
-            {
-                _view.SetMoveSpeed(0f);
                 return;
-            }
 
             _isAutoMoving = false;
             _view.SetMoveSpeed(0f);
@@ -512,7 +516,9 @@ namespace Game.Player
             var attackConfig = _currentAttackConfig != null ? _currentAttackConfig : _attackConfig;
             var targets = ResolveAttackTargets(attackConfig);
 
-            if (targets.Count == 0 && _pendingHitTarget is EnemyController pendingEnemy)
+            // ShapeType 판정을 통과한 대상이 없으면 공격은 빗나가야 한다.
+            // (fallback 강제 타격은 hit shape 설정을 무시하게 만들 수 있음)
+            if (attackConfig == null && targets.Count == 0 && _pendingHitTarget is EnemyController pendingEnemy)
                 targets.Add(pendingEnemy);
 
             if (targets.Count == 0)

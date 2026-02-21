@@ -147,10 +147,17 @@ namespace Game.Unit
 
         public void SetMoveSpeed(float speed)
         {
-            if (_animator == null || !_hasSpeedParameter)
+            if (_animator == null)
                 return;
 
-            _animator.SetFloat(Hash_Speed, Mathf.Max(0f, speed));
+            var clampedSpeed = Mathf.Max(0f, speed);
+
+            if (_hasSpeedParameter)
+                _animator.SetFloat(Hash_Speed, clampedSpeed);
+
+            // 이동 입력/자동이동이 존재하면 Walk 상태를 최우선으로 시도한다.
+            if (clampedSpeed > 0.01f)
+                EnsureState(AnimatorStateType.Walk);
         }
 
         private void Update()
@@ -188,18 +195,24 @@ namespace Game.Unit
             int hash = Animator.StringToHash(state.ToString());
             var info = _animator.GetCurrentAnimatorStateInfo(0);
 
-            if (_isAttackPlaying && (state == AnimatorStateType.Idle || state == AnimatorStateType.Walk))
+            // 이동이 발생하는 순간에는 공격 락 상태라도 Walk 전환을 허용한다.
+            // (조이스틱 이동/자동추적 이동 시 즉시 Walk 애니메이션 반영)
+            if (_isAttackPlaying && state == AnimatorStateType.Idle)
                 return;
+
+            if (state == AnimatorStateType.Walk)
+                _isAttackPlaying = false;
 
             bool isSameState = info.shortNameHash == hash || _currentBaseStateHash == hash;
             if (isSameState && float.IsNegativeInfinity(normalizedTime))
                 return; // ✅ 같은 상태면 재시작 금지(Idle 떨림 방지)
 
-            _animator.CrossFadeInFixedTime(hash, 0.08f, 0,
-                float.IsNegativeInfinity(normalizedTime) ? 0f : normalizedTime);
-
-            _currentBaseStateHash = hash;
-            LogAnimationStateChange($"State => {state}");
+            if (!TryCrossFadeState(state, normalizedTime))
+            {
+                if (state == AnimatorStateType.Walk)
+                    LogAnimationStateChange("Walk state not found. Speed-only locomotion fallback.");
+                return;
+            }
 
             if (ShouldForceImmediateAnimatorUpdate(state))
                 _animator.Update(0f);
@@ -208,6 +221,26 @@ namespace Game.Unit
         protected virtual bool ShouldForceImmediateAnimatorUpdate(AnimatorStateType animationState)
         {
             // 템플릿에서는 즉시 반영이 필요한 케이스가 많아서 true 유지
+            return true;
+        }
+
+        private bool TryCrossFadeState(AnimatorStateType state, float normalizedTime)
+        {
+            var stateName = state.ToString();
+            var layerState = $"Base Layer.{stateName}";
+            var hash = Animator.StringToHash(stateName);
+            var layerHash = Animator.StringToHash(layerState);
+            var hasState = _animator.HasState(0, hash) || _animator.HasState(0, layerHash);
+
+            if (!hasState)
+                return false;
+
+            var targetHash = _animator.HasState(0, hash) ? hash : layerHash;
+            _animator.CrossFadeInFixedTime(targetHash, 0.08f, 0,
+                float.IsNegativeInfinity(normalizedTime) ? 0f : normalizedTime);
+
+            _currentBaseStateHash = targetHash;
+            LogAnimationStateChange($"State => {stateName}");
             return true;
         }
 
@@ -480,6 +513,12 @@ namespace Game.Unit
 
             _animator.Rebind();
             _animator.Update(0f);
+
+            // RuntimeAnimatorController가 바뀌면 파라미터/상태 캐시를 다시 잡아야 한다.
+            // (초기 Awake()에서 캐시한 Speed 유무가 오래된 값이면 이동 애니메이션이 갱신되지 않을 수 있음)
+            CacheAnimatorParameters();
+            CacheAttackHashes();
+            _currentBaseStateHash = _animator.GetCurrentAnimatorStateInfo(0).shortNameHash;
         }
 
         // ----------------------------
