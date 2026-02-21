@@ -188,8 +188,13 @@ namespace Game.Unit
             int hash = Animator.StringToHash(state.ToString());
             var info = _animator.GetCurrentAnimatorStateInfo(0);
 
-            if (_isAttackPlaying && (state == AnimatorStateType.Idle || state == AnimatorStateType.Walk))
+            // 이동이 발생하는 순간에는 공격 락 상태라도 Walk 전환을 허용한다.
+            // (조이스틱 이동/자동추적 이동 시 즉시 Walk 애니메이션 반영)
+            if (_isAttackPlaying && state == AnimatorStateType.Idle)
                 return;
+
+            if (state == AnimatorStateType.Walk)
+                _isAttackPlaying = false;
 
             bool isSameState = info.shortNameHash == hash || _currentBaseStateHash == hash;
             if (isSameState && float.IsNegativeInfinity(normalizedTime))
