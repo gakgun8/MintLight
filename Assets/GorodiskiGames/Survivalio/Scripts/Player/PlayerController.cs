@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using Core;
 using Game.Cloth;
 using Game.Config;
@@ -177,6 +178,7 @@ namespace Game.Player
         private readonly GameManager _gameManager;
         private readonly AutoCombatConfig _autoCombatConfig;
         private readonly AttackConfig _attackConfig;
+        private readonly AttackConfig[] _comboConfigs;
 
         public PlayerModel Model => _model;
         public new PlayerView View => _view;
@@ -195,6 +197,10 @@ namespace Game.Player
         private float _lastAttackTime = -999f;
         private UnitController _pendingHitTarget;
         private GameManager _pendingHitGameManager;
+        private bool _hadTargetLastTick;
+        private bool _isAutoMoving;
+        private AttackConfig _currentAttackConfig;
+        private readonly HashSet<EnemyController> _hitEnemiesInCurrentAttack = new HashSet<EnemyController>();
 
         public PlayerController(PlayerView view, PlayerModel model, Context context) : base(view)
         {
@@ -214,6 +220,7 @@ namespace Game.Player
             var gameConfig = context.Get<GameConfig>();
             _autoCombatConfig = gameConfig.AutoCombatConfig != null ? gameConfig.AutoCombatConfig : (gameConfig.PlayerConfig != null ? gameConfig.PlayerConfig.autoCombat : null);
             _attackConfig = gameConfig.AttackConfig;
+            _comboConfigs = _autoCombatConfig != null ? _autoCombatConfig.combo : null;
 
             if (_autoCombatConfig == null)
                 Debug.LogWarning("[PlayerCombat] AutoCombatConfig is NULL. Auto combat disabled.");
@@ -232,6 +239,7 @@ namespace Game.Player
             _view.SetCollider(true);
 
             _view.ON_ATTACK_HIT += OnAttackHit;
+            _view.ON_ATTACK_DASH += OnAttackDash;
             _timer.TICK += OnTick;
         }
 
@@ -239,6 +247,7 @@ namespace Game.Player
         {
             _timer.TICK -= OnTick;
             _view.ON_ATTACK_HIT -= OnAttackHit;
+            _view.ON_ATTACK_DASH -= OnAttackDash;
             _stateManager.Dispose();
             Visibility(false);
         }
@@ -257,14 +266,33 @@ namespace Game.Player
             }
 
             if (_currentTarget == null)
+            {
+                StopAutoMovement();
+                if (_hadTargetLastTick)
+                    _view.Idle();
+
+                _view.SetMoveSpeed(0f);
+                _hadTargetLastTick = false;
                 return;
+            }
+
+            _hadTargetLastTick = true;
 
             var targetPosition = _currentTarget.View.Position;
             var attackRange = Mathf.Max(0.1f, _attackConfig.attackRange);
+            var stopDistance = Mathf.Max(0.1f, _autoCombatConfig.stopDistance);
+            var desiredRange = Mathf.Max(stopDistance, attackRange * 0.95f);
             var distance = Vector3.Distance(_view.Position, targetPosition);
 
-            if (distance <= attackRange || _autoCombatConfig.outOfRangeBehaviour == OutOfRangeBehaviour.RotateOnly)
-                RotateToTarget(targetPosition);
+            RotateToTarget(targetPosition);
+
+            if (distance > desiredRange)
+            {
+                HandleApproach(targetPosition, desiredRange);
+                return;
+            }
+
+            StopAutoMovement();
 
             if (currentTime < _nextAttackTime)
             {
@@ -274,12 +302,6 @@ namespace Game.Player
                     LogCombat($"Attack skipped - cooldown. remaining={remain:F2}s");
                     _lastCooldownLogTime = currentTime;
                 }
-                return;
-            }
-
-            if (distance > attackRange)
-            {
-                LogCombat($"Attack skipped - out of range. distance={distance:F2}, range={attackRange:F2}");
                 return;
             }
 
@@ -360,6 +382,55 @@ namespace Game.Player
                 _model.RotateSpeed * Time.deltaTime);
         }
 
+        private void HandleApproach(Vector3 targetPosition, float desiredRange)
+        {
+            if (_autoCombatConfig.outOfRangeBehaviour == OutOfRangeBehaviour.RotateOnly)
+            {
+                StopAutoMovement();
+                return;
+            }
+
+            if (_view.IsAttackPlaying)
+                return;
+
+            var toTarget = targetPosition - _view.Position;
+            toTarget.y = 0f;
+            var sqrDistance = toTarget.sqrMagnitude;
+            if (sqrDistance <= desiredRange * desiredRange)
+            {
+                StopAutoMovement();
+                return;
+            }
+
+            var direction = toTarget.normalized;
+            var moveSpeed = Mathf.Max(0.1f, _model.WalkSpeed * Mathf.Max(0.1f, _autoCombatConfig.approachSpeedMultiplier));
+            _view.Position += direction * moveSpeed * Time.deltaTime;
+
+            _view.SetMoveSpeed(1f);
+            if (!_isAutoMoving)
+            {
+                _view.Walk();
+                _isAutoMoving = true;
+                LogCombat("Auto approach started.");
+            }
+        }
+
+        private void StopAutoMovement()
+        {
+            if (!_isAutoMoving)
+            {
+                _view.SetMoveSpeed(0f);
+                return;
+            }
+
+            _isAutoMoving = false;
+            _view.SetMoveSpeed(0f);
+            if (!_view.IsAttackPlaying)
+                _view.Idle();
+
+            LogCombat("Auto approach stopped.");
+        }
+
         private void TryAttack(float currentTime)
         {
             if (_currentTarget == null)
@@ -368,7 +439,16 @@ namespace Game.Player
                 return;
             }
 
-            var cooldown = Mathf.Max(0.01f, _attackConfig.attackCooldown);
+            if (_view.IsAttackPlaying && _view.CurrentAttackNormalizedTime < 0.9f)
+            {
+                LogCombat($"Attack skipped - attack locked. progress={_view.CurrentAttackNormalizedTime:F2}");
+                return;
+            }
+
+            var nextComboIndex = (_comboIndex % 3) + 1;
+            var nextConfig = GetAttackConfigForCombo(nextComboIndex);
+            var cooldownSource = nextConfig != null ? nextConfig : _attackConfig;
+            var cooldown = cooldownSource != null ? Mathf.Max(0.01f, cooldownSource.attackCooldown) : 0.5f;
             _nextAttackTime = currentTime + cooldown;
 
             StartAttackCombo(_currentTarget, _gameManager);
@@ -388,27 +468,30 @@ namespace Game.Player
             _comboIndex = (_comboIndex % 3) + 1;
             _lastAttackTime = Time.time;
 
-            _view.PlayAttackCombo(_comboIndex);
+            _currentAttackConfig = GetAttackConfigForCombo(_comboIndex);
+            _hitEnemiesInCurrentAttack.Clear();
+
+            if (_currentAttackConfig != null)
+                _view.PlayAttackByConfig(_currentAttackConfig);
+            else
+                _view.PlayAttackCombo(_comboIndex);
+
             var targetName = target.View != null ? target.View.name : "NULL";
-            Debug.Log($"[PlayerCombat] StartAttackCombo combo={_comboIndex}, target={targetName}");
+            var attackId = _currentAttackConfig != null ? _currentAttackConfig.id : $"combo_{_comboIndex}";
+            Debug.Log($"[PlayerCombat] StartAttackCombo combo={_comboIndex}, attack={attackId}, target={targetName}");
         }
 
         private void OnAttackHit()
         {
             Debug.Log("[PlayerCombat] OnAttackHit received.");
 
-            if (_pendingHitTarget == null)
-                return;
+            var attackConfig = _currentAttackConfig != null ? _currentAttackConfig : _attackConfig;
+            var targets = ResolveAttackTargets(attackConfig);
 
-            if (!(_pendingHitTarget is EnemyController enemy))
-            {
-                Debug.LogWarning("[PlayerCombat] TODO: Unsupported target type for attack hit. Connect existing damage API for this UnitController type.");
-                _pendingHitTarget = null;
-                _pendingHitGameManager = null;
-                return;
-            }
+            if (targets.Count == 0 && _pendingHitTarget is EnemyController pendingEnemy)
+                targets.Add(pendingEnemy);
 
-            if (enemy.Model == null || enemy.View == null || enemy.Model.Health <= 0)
+            if (targets.Count == 0)
             {
                 _pendingHitTarget = null;
                 _pendingHitGameManager = null;
@@ -416,17 +499,128 @@ namespace Game.Player
             }
 
             var attackValue = _model.GetAttribute(UnitAttributeType.Attack);
-            var damage = Mathf.Max(1, Mathf.RoundToInt(attackValue));
+            var multiplier = attackConfig != null ? Mathf.Max(0.01f, attackConfig.damageMultiplier) : 1f;
+            var damage = Mathf.Max(1, Mathf.RoundToInt(attackValue * multiplier));
 
-            var direction = enemy.View.Position - _view.Position;
-            direction.y = 0f;
-            direction = direction.sqrMagnitude > 0.0001f ? direction.normalized : _view.RotateNode.forward;
+            for (int i = 0; i < targets.Count; i++)
+            {
+                var enemy = targets[i];
+                if (enemy == null || enemy.View == null || enemy.Model == null || enemy.Model.Health <= 0)
+                    continue;
 
-            enemy.TryToDamage(damage, direction);
-            Debug.Log($"[PlayerCombat] Damage applied. target={enemy.View.name}, damage={damage}");
+                var direction = enemy.View.Position - _view.Position;
+                direction.y = 0f;
+                direction = direction.sqrMagnitude > 0.0001f
+                    ? direction.normalized
+                    : (_view.RotateNode != null ? _view.RotateNode.forward : _view.transform.forward);
+                enemy.TryToDamage(damage, direction);
+                _hitEnemiesInCurrentAttack.Add(enemy);
+                Debug.Log($"[PlayerCombat] Damage applied. target={enemy.View.name}, damage={damage}, attack={(attackConfig != null ? attackConfig.id : "default")}");
+            }
 
             _pendingHitTarget = null;
             _pendingHitGameManager = null;
+        }
+
+        private void OnAttackDash()
+        {
+            if (_currentAttackConfig == null || !_currentAttackConfig.move.enabled)
+                return;
+
+            var dir = _view.RotateNode != null ? _view.RotateNode.forward : _view.transform.forward;
+            _view.StartAttackMove(_currentAttackConfig.move.distance, _currentAttackConfig.move.duration, _currentAttackConfig.move.curve, dir);
+        }
+
+        private AttackConfig GetAttackConfigForCombo(int comboIndex)
+        {
+            if (_comboConfigs != null && _comboConfigs.Length > 0)
+            {
+                var idx = Mathf.Clamp(comboIndex - 1, 0, _comboConfigs.Length - 1);
+                if (_comboConfigs[idx] != null)
+                    return _comboConfigs[idx];
+            }
+
+            return _attackConfig;
+        }
+
+        private List<EnemyController> ResolveAttackTargets(AttackConfig attackConfig)
+        {
+            var result = new List<EnemyController>();
+            if (_gameManager == null || _gameManager.Enemies == null)
+                return result;
+
+            if (attackConfig == null)
+            {
+                if (_pendingHitTarget is EnemyController fallbackEnemy)
+                    result.Add(fallbackEnemy);
+                return result;
+            }
+
+            var rotateNode = _view.RotateNode != null ? _view.RotateNode : _view.transform;
+            var origin = rotateNode.position + rotateNode.TransformDirection(attackConfig.originOffset);
+            var forward = rotateNode.forward;
+            forward.y = 0f;
+            if (forward.sqrMagnitude < 0.0001f)
+                forward = _view.transform.forward;
+            forward.Normalize();
+            var right = Vector3.Cross(Vector3.up, forward);
+
+            for (int i = 0; i < _gameManager.Enemies.Count; i++)
+            {
+                var enemy = _gameManager.Enemies[i];
+                if (enemy == null || enemy.View == null || enemy.Model == null || enemy.Model.Health <= 0)
+                    continue;
+
+                if (attackConfig.hitOncePerAttack && _hitEnemiesInCurrentAttack.Contains(enemy))
+                    continue;
+
+                var targetPos = enemy.View.AimPosition;
+                if (!IsInsideAttackShape(attackConfig, origin, forward, right, targetPos))
+                    continue;
+
+                result.Add(enemy);
+            }
+
+            if (attackConfig.maxTargets > 0 && result.Count > attackConfig.maxTargets)
+                result = result.OrderBy(e => (e.View.Position - _view.Position).sqrMagnitude).Take(attackConfig.maxTargets).ToList();
+
+            return result;
+        }
+
+        private static bool IsInsideAttackShape(AttackConfig cfg, Vector3 origin, Vector3 forward, Vector3 right, Vector3 target)
+        {
+            var delta = target - origin;
+            delta.y = 0f;
+
+            switch (cfg.shapeType)
+            {
+                case AttackShapeType.Circle:
+                {
+                    var radius = cfg.circle.radius > 0.01f ? cfg.circle.radius : Mathf.Max(cfg.hitRadius, cfg.attackRange);
+                    return delta.sqrMagnitude <= radius * radius;
+                }
+                case AttackShapeType.LineBox:
+                {
+                    var localForward = Vector3.Dot(delta, forward);
+                    var localRight = Mathf.Abs(Vector3.Dot(delta, right));
+                    var length = cfg.lineBox.length > 0.01f ? cfg.lineBox.length : cfg.attackRange;
+                    var halfWidth = Mathf.Max(0.05f, cfg.lineBox.width * 0.5f);
+                    return localForward >= 0f && localForward <= length && localRight <= halfWidth;
+                }
+                case AttackShapeType.Sector:
+                default:
+                {
+                    var radius = cfg.sector.radius > 0.01f ? cfg.sector.radius : cfg.attackRange;
+                    if (delta.sqrMagnitude > radius * radius)
+                        return false;
+
+                    var angle = cfg.sector.angle > 0.01f ? cfg.sector.angle : 90f;
+                    var half = angle * 0.5f;
+                    var targetDir = delta.normalized;
+                    var toAngle = Vector3.Angle(forward, targetDir);
+                    return toAngle <= half;
+                }
+            }
         }
 
         private void LogCombat(string message)
