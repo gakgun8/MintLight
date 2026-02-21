@@ -22,6 +22,7 @@ namespace Game.Player.States
             _walkSpeed = _player.Model.WalkSpeed;
 
             _player.View.Walk();
+            _player.View.SetMoveSpeed(1f);
 
             _lastMoveAppliedFrame = Time.frameCount;
             _stalledMoveFrameCount = 0;
@@ -59,9 +60,15 @@ namespace Game.Player.States
             base.OnPause(value);
 
             if(_isPause)
+            {
+                _player.View.SetMoveSpeed(0f);
                 _player.View.Idle();
+            }
             else
+            {
+                _player.View.SetMoveSpeed(1f);
                 _player.View.Walk();
+            }
         }
 
         private void HandleInput()
@@ -70,6 +77,7 @@ namespace Game.Player.States
             _inputDirection.y = _gameView.Joystick.Vertical;
 
             _inputDirection = _inputDirection.normalized;
+            _player.View.SetMoveSpeed(_inputDirection.magnitude);
         }
 
         private void HandleMovement()

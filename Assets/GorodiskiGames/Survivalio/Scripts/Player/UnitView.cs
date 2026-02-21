@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using Core;
 using Game.Player;
 using UnityEngine;
@@ -43,9 +44,15 @@ namespace Game.Unit
         private float _defaultAnimatorSpeed = 1f;
 
         private Coroutine _blinkCoroutine;
-        private Coroutine _forceIdleCoroutine;
         private Coroutine _attackMoveCoroutine;
         private static readonly int BlinkAmountShaderProperty = Shader.PropertyToID("_BlinkAmount");
+        private static readonly int Hash_Speed = Animator.StringToHash("Speed");
+
+        private readonly List<int> _attackStateHashes = new List<int>(8);
+        private int _currentBaseStateHash;
+        private bool _isAttackPlaying;
+        private float _attackLockUntilTime;
+        private bool _hasSpeedParameter;
 
         public Vector3 Position
         {
@@ -90,6 +97,9 @@ namespace Game.Unit
                 _defaultCullingMode = _animator.cullingMode;
                 _defaultUpdateMode = _animator.updateMode;
                 _defaultAnimatorSpeed = _animator.speed;
+                _currentBaseStateHash = _animator.GetCurrentAnimatorStateInfo(0).shortNameHash;
+                CacheAnimatorParameters();
+                CacheAttackHashes();
             }
 
             CacheMaterials();
@@ -102,12 +112,6 @@ namespace Game.Unit
         {
             StopBlink();
             SetBlinkAmount(0f);
-
-            if (_forceIdleCoroutine != null)
-            {
-                StopCoroutine(_forceIdleCoroutine);
-                _forceIdleCoroutine = null;
-            }
         }
 
         public void SetCollider(bool value)
@@ -117,6 +121,19 @@ namespace Game.Unit
         }
 
         public float GetCurrentStateLength => _animator != null ? _animator.GetCurrentAnimatorStateInfo(0).length : 0f;
+        public bool IsAttackPlaying => _isAttackPlaying;
+
+        public float CurrentAttackNormalizedTime
+        {
+            get
+            {
+                if (_animator == null)
+                    return 1f;
+
+                var info = _animator.GetCurrentAnimatorStateInfo(0);
+                return IsAttackState(info.shortNameHash) ? info.normalizedTime : 1f;
+            }
+        }
 
         // ----------------------------
         // Stable animation control
@@ -128,6 +145,29 @@ namespace Game.Unit
         public void Die()  => EnsureState(AnimatorStateType.Die);
         public void Attack(float normalizedTime = float.NegativeInfinity) => EnsureState(AnimatorStateType.Attack, normalizedTime);
 
+        public void SetMoveSpeed(float speed)
+        {
+            if (_animator == null || !_hasSpeedParameter)
+                return;
+
+            _animator.SetFloat(Hash_Speed, Mathf.Max(0f, speed));
+        }
+
+        private void Update()
+        {
+            if (_animator == null)
+                return;
+
+            var info = _animator.GetCurrentAnimatorStateInfo(0);
+            _currentBaseStateHash = info.shortNameHash;
+
+            if (!_isAttackPlaying)
+                return;
+
+            if (!IsAttackState(info.shortNameHash) || info.normalizedTime >= 1f || Time.time >= _attackLockUntilTime)
+                _isAttackPlaying = false;
+        }
+
         /// <summary>
         /// IMPORTANT:
         /// PlayerController가 타겟 없을 때 매 프레임 Idle()을 호출할 수 있음.
@@ -138,28 +178,21 @@ namespace Game.Unit
             if (_animator == null)
                 return;
 
-            // 공격 끝나고 강제 Idle 복귀 예약이 남아있으면, 정상 상태 전환 시 취소
-            if (_forceIdleCoroutine != null && state != AnimatorStateType.Attack)
-            {
-                StopCoroutine(_forceIdleCoroutine);
-                _forceIdleCoroutine = null;
-            }
-
             int hash = Animator.StringToHash(state.ToString());
             var info = _animator.GetCurrentAnimatorStateInfo(0);
 
-            bool isSameState = info.shortNameHash == hash || info.fullPathHash == hash;
+            if (_isAttackPlaying && (state == AnimatorStateType.Idle || state == AnimatorStateType.Walk))
+                return;
+
+            bool isSameState = info.shortNameHash == hash || _currentBaseStateHash == hash;
             if (isSameState && float.IsNegativeInfinity(normalizedTime))
                 return; // ✅ 같은 상태면 재시작 금지(Idle 떨림 방지)
 
-            if (float.IsNegativeInfinity(normalizedTime))
-            {
-                _animator.Play(hash, 0, 0f);
-            }
-            else
-            {
-                _animator.PlayInFixedTime(hash, 0, normalizedTime);
-            }
+            _animator.CrossFadeInFixedTime(hash, 0.08f, 0,
+                float.IsNegativeInfinity(normalizedTime) ? 0f : normalizedTime);
+
+            _currentBaseStateHash = hash;
+            LogAnimationStateChange($"State => {state}");
 
             if (ShouldForceImmediateAnimatorUpdate(state))
                 _animator.Update(0f);
@@ -184,17 +217,18 @@ namespace Game.Unit
             if (_animator == null)
                 return;
 
+            if (_isAttackPlaying)
+            {
+                var attackProgress = CurrentAttackNormalizedTime;
+                if (attackProgress < 0.9f)
+                    return;
+            }
+
             comboIndex = Mathf.Clamp(comboIndex, 1, 3);
 
             // 혹시 남아있는 트리거/인덱스 전이 제거
             _animator.ResetTrigger(Hash_AttackTrigger);
             _animator.SetInteger(Hash_AttackIndex, 0);
-
-            if (_forceIdleCoroutine != null)
-            {
-                StopCoroutine(_forceIdleCoroutine);
-                _forceIdleCoroutine = null;
-            }
 
             // Base Layer state names in your screenshot:
             // Attack_01 / Attack_02 / Attack_03
@@ -218,17 +252,21 @@ namespace Game.Unit
                 _animator.SetInteger(Hash_AttackIndex, comboIndex);
                 _animator.SetTrigger(Hash_AttackTrigger);
                 _animator.Update(0f);
+                _isAttackPlaying = true;
+                _attackLockUntilTime = Time.time + 0.2f;
+                LogAnimationStateChange($"Attack trigger => combo:{comboIndex}");
                 return;
             }
 
-            // ✅ Attack 끝나면 Idle로만 복귀 (Animator 전이에 의존하지 않음)
             float clipLen = _animator.GetCurrentAnimatorStateInfo(0).length;
             if (clipLen <= 0.01f) clipLen = 0.35f;
 
             float speed = Mathf.Abs(_animator.speed) < 0.0001f ? 1f : _animator.speed;
-            float wait = clipLen / speed;
+            float wait = Mathf.Max(0.05f, clipLen / speed);
 
-            _forceIdleCoroutine = StartCoroutine(ForceIdleAfterSeconds(wait));
+            _isAttackPlaying = true;
+            _attackLockUntilTime = Time.time + wait;
+            LogAnimationStateChange($"Attack play => combo:{comboIndex}");
         }
 
         /// <summary>
@@ -241,13 +279,6 @@ namespace Game.Unit
             if (_animator == null || cfg == null)
                 return;
 
-            // 기존 강제 Idle 복귀 예약 취소
-            if (_forceIdleCoroutine != null)
-            {
-                StopCoroutine(_forceIdleCoroutine);
-                _forceIdleCoroutine = null;
-            }
-
             // 1) Trigger parameter first
             if (!string.IsNullOrEmpty(cfg.animatorTrigger))
             {
@@ -259,6 +290,9 @@ namespace Game.Unit
                         _animator.ResetTrigger(cfg.animatorTrigger);
                         _animator.SetTrigger(cfg.animatorTrigger);
                         _animator.Update(0f);
+                        _isAttackPlaying = true;
+                        _attackLockUntilTime = Time.time + 0.2f;
+                        LogAnimationStateChange($"Attack trigger => {cfg.animatorTrigger}");
                         return;
                     }
                 }
@@ -287,6 +321,9 @@ namespace Game.Unit
             {
                 EnsureState(AnimatorStateType.Attack, 0f);
             }
+
+            _isAttackPlaying = true;
+            _attackLockUntilTime = Time.time + 0.2f;
         }
 
         /// <summary>
@@ -343,31 +380,58 @@ namespace Game.Unit
                 if (!_animator.HasState(0, hash))
                     continue;
 
-                _animator.Play(hash, 0, normalizedTime);
+                _animator.CrossFadeInFixedTime(hash, 0.05f, 0, normalizedTime);
                 _animator.Update(0f);
+                _currentBaseStateHash = hash;
+                LogAnimationStateChange($"State => {name}");
                 return true;
             }
 
             return false;
         }
 
-        private IEnumerator ForceIdleAfterSeconds(float seconds)
+        private void CacheAnimatorParameters()
         {
-            float wait = Mathf.Max(0.05f, seconds);
-            yield return new WaitForSeconds(wait);
-
-            if (_animator == null)
+            _hasSpeedParameter = false;
+            for (int i = 0; i < _animator.parameterCount; i++)
             {
-                _forceIdleCoroutine = null;
-                yield break;
+                var parameter = _animator.GetParameter(i);
+                if (parameter.type == AnimatorControllerParameterType.Float && parameter.nameHash == Hash_Speed)
+                {
+                    _hasSpeedParameter = true;
+                    break;
+                }
+            }
+        }
+
+        private void CacheAttackHashes()
+        {
+            _attackStateHashes.Clear();
+            string[] names =
+            {
+                "Attack", "Attack_01", "Attack_02", "Attack_03",
+                "Attack01", "Attack02", "Attack03",
+                "Attack1", "Attack2", "Attack3"
+            };
+
+            for (int i = 0; i < names.Length; i++)
+                _attackStateHashes.Add(Animator.StringToHash(names[i]));
+        }
+
+        private bool IsAttackState(int stateHash)
+        {
+            for (int i = 0; i < _attackStateHashes.Count; i++)
+            {
+                if (_attackStateHashes[i] == stateHash)
+                    return true;
             }
 
-            // ✅ Idle로 "한 번만" 복귀 (랜덤 normalizedTime 금지: 떨림 원인)
-            int idleHash = Animator.StringToHash(AnimatorStateType.Idle.ToString());
-            _animator.Play(idleHash, 0, 0f);
-            _animator.Update(0f);
+            return false;
+        }
 
-            _forceIdleCoroutine = null;
+        private void LogAnimationStateChange(string message)
+        {
+            Debug.Log($"[UnitView] {name} {message}");
         }
 
         // ----------------------------

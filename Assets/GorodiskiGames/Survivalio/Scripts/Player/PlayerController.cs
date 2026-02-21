@@ -195,6 +195,7 @@ namespace Game.Player
         private float _lastAttackTime = -999f;
         private UnitController _pendingHitTarget;
         private GameManager _pendingHitGameManager;
+        private bool _hadTargetLastTick;
 
         public PlayerController(PlayerView view, PlayerModel model, Context context) : base(view)
         {
@@ -257,7 +258,15 @@ namespace Game.Player
             }
 
             if (_currentTarget == null)
+            {
+                if (_hadTargetLastTick)
+                    _view.Idle();
+
+                _hadTargetLastTick = false;
                 return;
+            }
+
+            _hadTargetLastTick = true;
 
             var targetPosition = _currentTarget.View.Position;
             var attackRange = Mathf.Max(0.1f, _attackConfig.attackRange);
@@ -365,6 +374,12 @@ namespace Game.Player
             if (_currentTarget == null)
             {
                 LogCombat("Attack skipped - no target.");
+                return;
+            }
+
+            if (_view.IsAttackPlaying && _view.CurrentAttackNormalizedTime < 0.9f)
+            {
+                LogCombat($"Attack skipped - attack locked. progress={_view.CurrentAttackNormalizedTime:F2}");
                 return;
             }
 
