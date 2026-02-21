@@ -195,6 +195,8 @@ namespace Game.Player
         private float _lastAttackTime = -999f;
         private UnitController _pendingHitTarget;
         private GameManager _pendingHitGameManager;
+        private bool _hadTargetLastTick;
+        private bool _isAutoMoving;
 
         public PlayerController(PlayerView view, PlayerModel model, Context context) : base(view)
         {
@@ -257,14 +259,33 @@ namespace Game.Player
             }
 
             if (_currentTarget == null)
+            {
+                StopAutoMovement();
+                if (_hadTargetLastTick)
+                    _view.Idle();
+
+                _view.SetMoveSpeed(0f);
+                _hadTargetLastTick = false;
                 return;
+            }
+
+            _hadTargetLastTick = true;
 
             var targetPosition = _currentTarget.View.Position;
             var attackRange = Mathf.Max(0.1f, _attackConfig.attackRange);
+            var stopDistance = Mathf.Max(0.1f, _autoCombatConfig.stopDistance);
+            var desiredRange = Mathf.Max(stopDistance, attackRange * 0.95f);
             var distance = Vector3.Distance(_view.Position, targetPosition);
 
-            if (distance <= attackRange || _autoCombatConfig.outOfRangeBehaviour == OutOfRangeBehaviour.RotateOnly)
-                RotateToTarget(targetPosition);
+            RotateToTarget(targetPosition);
+
+            if (distance > desiredRange)
+            {
+                HandleApproach(targetPosition, desiredRange);
+                return;
+            }
+
+            StopAutoMovement();
 
             if (currentTime < _nextAttackTime)
             {
@@ -274,12 +295,6 @@ namespace Game.Player
                     LogCombat($"Attack skipped - cooldown. remaining={remain:F2}s");
                     _lastCooldownLogTime = currentTime;
                 }
-                return;
-            }
-
-            if (distance > attackRange)
-            {
-                LogCombat($"Attack skipped - out of range. distance={distance:F2}, range={attackRange:F2}");
                 return;
             }
 
@@ -360,11 +375,66 @@ namespace Game.Player
                 _model.RotateSpeed * Time.deltaTime);
         }
 
+        private void HandleApproach(Vector3 targetPosition, float desiredRange)
+        {
+            if (_autoCombatConfig.outOfRangeBehaviour == OutOfRangeBehaviour.RotateOnly)
+            {
+                StopAutoMovement();
+                return;
+            }
+
+            if (_view.IsAttackPlaying)
+                return;
+
+            var toTarget = targetPosition - _view.Position;
+            toTarget.y = 0f;
+            var sqrDistance = toTarget.sqrMagnitude;
+            if (sqrDistance <= desiredRange * desiredRange)
+            {
+                StopAutoMovement();
+                return;
+            }
+
+            var direction = toTarget.normalized;
+            var moveSpeed = Mathf.Max(0.1f, _model.WalkSpeed * Mathf.Max(0.1f, _autoCombatConfig.approachSpeedMultiplier));
+            _view.Position += direction * moveSpeed * Time.deltaTime;
+
+            _view.SetMoveSpeed(1f);
+            if (!_isAutoMoving)
+            {
+                _view.Walk();
+                _isAutoMoving = true;
+                LogCombat("Auto approach started.");
+            }
+        }
+
+        private void StopAutoMovement()
+        {
+            if (!_isAutoMoving)
+            {
+                _view.SetMoveSpeed(0f);
+                return;
+            }
+
+            _isAutoMoving = false;
+            _view.SetMoveSpeed(0f);
+            if (!_view.IsAttackPlaying)
+                _view.Idle();
+
+            LogCombat("Auto approach stopped.");
+        }
+
         private void TryAttack(float currentTime)
         {
             if (_currentTarget == null)
             {
                 LogCombat("Attack skipped - no target.");
+                return;
+            }
+
+            if (_view.IsAttackPlaying && _view.CurrentAttackNormalizedTime < 0.9f)
+            {
+                LogCombat($"Attack skipped - attack locked. progress={_view.CurrentAttackNormalizedTime:F2}");
                 return;
             }
 

@@ -6,6 +6,7 @@ namespace Game.Player.States
         {
             base.Initialize();
 
+            _player.View.SetMoveSpeed(0f);
             _player.View.Idle();
 
             _timer.TICK += OnTick;
