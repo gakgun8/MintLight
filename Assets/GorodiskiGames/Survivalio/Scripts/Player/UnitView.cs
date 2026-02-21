@@ -147,10 +147,17 @@ namespace Game.Unit
 
         public void SetMoveSpeed(float speed)
         {
-            if (_animator == null || !_hasSpeedParameter)
+            if (_animator == null)
                 return;
 
-            _animator.SetFloat(Hash_Speed, Mathf.Max(0f, speed));
+            var clampedSpeed = Mathf.Max(0f, speed);
+
+            if (_hasSpeedParameter)
+                _animator.SetFloat(Hash_Speed, clampedSpeed);
+
+            // 이동 입력/자동이동이 존재하면 Walk 상태를 최우선으로 시도한다.
+            if (clampedSpeed > 0.01f)
+                EnsureState(AnimatorStateType.Walk);
         }
 
         private void Update()
@@ -200,11 +207,12 @@ namespace Game.Unit
             if (isSameState && float.IsNegativeInfinity(normalizedTime))
                 return; // ✅ 같은 상태면 재시작 금지(Idle 떨림 방지)
 
-            _animator.CrossFadeInFixedTime(hash, 0.08f, 0,
-                float.IsNegativeInfinity(normalizedTime) ? 0f : normalizedTime);
-
-            _currentBaseStateHash = hash;
-            LogAnimationStateChange($"State => {state}");
+            if (!TryCrossFadeState(state, normalizedTime))
+            {
+                if (state == AnimatorStateType.Walk)
+                    LogAnimationStateChange("Walk state not found. Speed-only locomotion fallback.");
+                return;
+            }
 
             if (ShouldForceImmediateAnimatorUpdate(state))
                 _animator.Update(0f);
@@ -213,6 +221,26 @@ namespace Game.Unit
         protected virtual bool ShouldForceImmediateAnimatorUpdate(AnimatorStateType animationState)
         {
             // 템플릿에서는 즉시 반영이 필요한 케이스가 많아서 true 유지
+            return true;
+        }
+
+        private bool TryCrossFadeState(AnimatorStateType state, float normalizedTime)
+        {
+            var stateName = state.ToString();
+            var layerState = $"Base Layer.{stateName}";
+            var hash = Animator.StringToHash(stateName);
+            var layerHash = Animator.StringToHash(layerState);
+            var hasState = _animator.HasState(0, hash) || _animator.HasState(0, layerHash);
+
+            if (!hasState)
+                return false;
+
+            var targetHash = _animator.HasState(0, hash) ? hash : layerHash;
+            _animator.CrossFadeInFixedTime(targetHash, 0.08f, 0,
+                float.IsNegativeInfinity(normalizedTime) ? 0f : normalizedTime);
+
+            _currentBaseStateHash = targetHash;
+            LogAnimationStateChange($"State => {stateName}");
             return true;
         }
 
