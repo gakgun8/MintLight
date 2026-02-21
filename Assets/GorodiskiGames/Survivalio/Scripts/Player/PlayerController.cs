@@ -265,7 +265,7 @@ namespace Game.Player
                 _nextScanTime = currentTime + Mathf.Max(0.05f, _autoCombatConfig.targetScanInterval);
             }
 
-            var hasManualInput = _gameView != null && _gameView.Joystick != null && _gameView.Joystick.HasInput;
+            var hasManualInput = _stateManager.Current is PlayerWalkState;
 
             if (_currentTarget == null)
             {
