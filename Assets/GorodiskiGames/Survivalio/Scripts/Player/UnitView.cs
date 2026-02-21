@@ -164,7 +164,14 @@ namespace Game.Unit
             if (!_isAttackPlaying)
                 return;
 
-            if (!IsAttackState(info.shortNameHash) || info.normalizedTime >= 1f || Time.time >= _attackLockUntilTime)
+            if (IsAttackState(info.shortNameHash))
+            {
+                if (info.normalizedTime >= 0.98f)
+                    _isAttackPlaying = false;
+                return;
+            }
+
+            if (Time.time >= _attackLockUntilTime)
                 _isAttackPlaying = false;
         }
 
@@ -252,20 +259,12 @@ namespace Game.Unit
                 _animator.SetInteger(Hash_AttackIndex, comboIndex);
                 _animator.SetTrigger(Hash_AttackTrigger);
                 _animator.Update(0f);
-                _isAttackPlaying = true;
-                _attackLockUntilTime = Time.time + 0.2f;
+                MarkAttackStarted();
                 LogAnimationStateChange($"Attack trigger => combo:{comboIndex}");
                 return;
             }
 
-            float clipLen = _animator.GetCurrentAnimatorStateInfo(0).length;
-            if (clipLen <= 0.01f) clipLen = 0.35f;
-
-            float speed = Mathf.Abs(_animator.speed) < 0.0001f ? 1f : _animator.speed;
-            float wait = Mathf.Max(0.05f, clipLen / speed);
-
-            _isAttackPlaying = true;
-            _attackLockUntilTime = Time.time + wait;
+            MarkAttackStarted();
             LogAnimationStateChange($"Attack play => combo:{comboIndex}");
         }
 
@@ -290,8 +289,7 @@ namespace Game.Unit
                         _animator.ResetTrigger(cfg.animatorTrigger);
                         _animator.SetTrigger(cfg.animatorTrigger);
                         _animator.Update(0f);
-                        _isAttackPlaying = true;
-                        _attackLockUntilTime = Time.time + 0.2f;
+                        MarkAttackStarted();
                         LogAnimationStateChange($"Attack trigger => {cfg.animatorTrigger}");
                         return;
                     }
@@ -322,8 +320,7 @@ namespace Game.Unit
                 EnsureState(AnimatorStateType.Attack, 0f);
             }
 
-            _isAttackPlaying = true;
-            _attackLockUntilTime = Time.time + 0.2f;
+            MarkAttackStarted();
         }
 
         /// <summary>
@@ -388,6 +385,18 @@ namespace Game.Unit
             }
 
             return false;
+        }
+
+        private void MarkAttackStarted()
+        {
+            _isAttackPlaying = true;
+
+            float clipLen = _animator.GetCurrentAnimatorStateInfo(0).length;
+            if (clipLen <= 0.01f)
+                clipLen = 0.45f;
+
+            float speed = Mathf.Abs(_animator.speed) < 0.0001f ? 1f : _animator.speed;
+            _attackLockUntilTime = Time.time + Mathf.Max(0.15f, clipLen / speed);
         }
 
         private void CacheAnimatorParameters()
