@@ -480,6 +480,12 @@ namespace Game.Unit
 
             _animator.Rebind();
             _animator.Update(0f);
+
+            // RuntimeAnimatorController가 바뀌면 파라미터/상태 캐시를 다시 잡아야 한다.
+            // (초기 Awake()에서 캐시한 Speed 유무가 오래된 값이면 이동 애니메이션이 갱신되지 않을 수 있음)
+            CacheAnimatorParameters();
+            CacheAttackHashes();
+            _currentBaseStateHash = _animator.GetCurrentAnimatorStateInfo(0).shortNameHash;
         }
 
         // ----------------------------
