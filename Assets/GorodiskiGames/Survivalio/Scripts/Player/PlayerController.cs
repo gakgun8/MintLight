@@ -265,14 +265,14 @@ namespace Game.Player
                 _nextScanTime = currentTime + Mathf.Max(0.05f, _autoCombatConfig.targetScanInterval);
             }
 
-            var isManualWalkState = _stateManager.Current is PlayerWalkState;
+            var hasManualInput = _gameView != null && _gameView.Joystick != null && _gameView.Joystick.HasInput;
 
             if (_currentTarget == null)
             {
                 StopAutoMovement();
                 ResetComboChain();
 
-                if (!isManualWalkState)
+                if (!hasManualInput)
                 {
                     if (!_view.IsAttackPlaying || _view.CurrentAttackNormalizedTime >= 0.98f)
                         _view.Idle();
@@ -297,12 +297,6 @@ namespace Game.Player
             // 공격 가능 거리 안에 들어오면 자동 이동 없이 즉시 공격 로직으로 진입한다.
             if (distance > attackRange)
             {
-                if (isManualWalkState)
-                {
-                    StopAutoMovement();
-                    return;
-                }
-
                 HandleApproach(targetPosition, desiredRange);
                 return;
             }
@@ -428,6 +422,7 @@ namespace Game.Player
             _view.Position += direction * moveSpeed * Time.deltaTime;
 
             _view.SetMoveSpeed(1f);
+            _view.Walk();
             if (!_comboResetByMovement)
             {
                 ResetComboChain();
@@ -436,7 +431,6 @@ namespace Game.Player
 
             if (!_isAutoMoving)
             {
-                _view.Walk();
                 _isAutoMoving = true;
                 LogCombat("Auto approach started.");
             }
