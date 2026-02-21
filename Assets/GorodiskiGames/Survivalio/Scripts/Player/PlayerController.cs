@@ -199,6 +199,7 @@ namespace Game.Player
         private GameManager _pendingHitGameManager;
         private bool _hadTargetLastTick;
         private bool _isAutoMoving;
+        private bool _comboResetByMovement;
         private AttackConfig _currentAttackConfig;
         private readonly HashSet<EnemyController> _hitEnemiesInCurrentAttack = new HashSet<EnemyController>();
 
@@ -268,7 +269,9 @@ namespace Game.Player
             if (_currentTarget == null)
             {
                 StopAutoMovement();
-                if (_hadTargetLastTick)
+                ResetComboChain();
+
+                if (!_view.IsAttackPlaying)
                     _view.Idle();
 
                 _view.SetMoveSpeed(0f);
@@ -292,6 +295,7 @@ namespace Game.Player
                 return;
             }
 
+            _comboResetByMovement = false;
             StopAutoMovement();
 
             if (currentTime < _nextAttackTime)
@@ -355,7 +359,10 @@ namespace Game.Player
                 return;
 
             if (bestEnemy == null && _currentTarget != null)
+            {
                 LogCombat($"Target lost: {_currentTarget.View.name}");
+                ResetComboChain();
+            }
             else if (bestEnemy != null)
                 LogCombat($"Target acquired: {bestEnemy.View.name}");
 
@@ -386,6 +393,8 @@ namespace Game.Player
         {
             if (_autoCombatConfig.outOfRangeBehaviour == OutOfRangeBehaviour.RotateOnly)
             {
+                if (!_view.IsAttackPlaying)
+                    _view.Idle();
                 StopAutoMovement();
                 return;
             }
@@ -407,6 +416,12 @@ namespace Game.Player
             _view.Position += direction * moveSpeed * Time.deltaTime;
 
             _view.SetMoveSpeed(1f);
+            if (!_comboResetByMovement)
+            {
+                ResetComboChain();
+                _comboResetByMovement = true;
+            }
+
             if (!_isAutoMoving)
             {
                 _view.Walk();
@@ -452,6 +467,16 @@ namespace Game.Player
             _nextAttackTime = currentTime + cooldown;
 
             StartAttackCombo(_currentTarget, _gameManager);
+        }
+
+        private void ResetComboChain()
+        {
+            _comboIndex = 0;
+            _lastAttackTime = -999f;
+            _currentAttackConfig = null;
+            _hitEnemiesInCurrentAttack.Clear();
+            _pendingHitTarget = null;
+            _pendingHitGameManager = null;
         }
 
         public void StartAttackCombo(UnitController target, GameManager gameManager)
