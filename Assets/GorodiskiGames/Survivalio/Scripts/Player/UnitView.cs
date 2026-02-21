@@ -188,8 +188,13 @@ namespace Game.Unit
             int hash = Animator.StringToHash(state.ToString());
             var info = _animator.GetCurrentAnimatorStateInfo(0);
 
-            if (_isAttackPlaying && (state == AnimatorStateType.Idle || state == AnimatorStateType.Walk))
+            // 이동이 발생하는 순간에는 공격 락 상태라도 Walk 전환을 허용한다.
+            // (조이스틱 이동/자동추적 이동 시 즉시 Walk 애니메이션 반영)
+            if (_isAttackPlaying && state == AnimatorStateType.Idle)
                 return;
+
+            if (state == AnimatorStateType.Walk)
+                _isAttackPlaying = false;
 
             bool isSameState = info.shortNameHash == hash || _currentBaseStateHash == hash;
             if (isSameState && float.IsNegativeInfinity(normalizedTime))
@@ -480,6 +485,12 @@ namespace Game.Unit
 
             _animator.Rebind();
             _animator.Update(0f);
+
+            // RuntimeAnimatorController가 바뀌면 파라미터/상태 캐시를 다시 잡아야 한다.
+            // (초기 Awake()에서 캐시한 Speed 유무가 오래된 값이면 이동 애니메이션이 갱신되지 않을 수 있음)
+            CacheAnimatorParameters();
+            CacheAttackHashes();
+            _currentBaseStateHash = _animator.GetCurrentAnimatorStateInfo(0).shortNameHash;
         }
 
         // ----------------------------
