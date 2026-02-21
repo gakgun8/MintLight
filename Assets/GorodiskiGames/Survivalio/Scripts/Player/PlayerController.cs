@@ -559,12 +559,14 @@ namespace Game.Player
         {
             if (_comboConfigs != null && _comboConfigs.Length > 0)
             {
-                var idx = Mathf.Clamp(comboIndex - 1, 0, _comboConfigs.Length - 1);
-                if (_comboConfigs[idx] != null)
+                var idx = comboIndex - 1;
+                if (idx >= 0 && idx < _comboConfigs.Length && _comboConfigs[idx] != null)
                     return _comboConfigs[idx];
+
+                return null;
             }
 
-            return _attackConfig;
+            return null;
         }
 
         private List<EnemyController> ResolveAttackTargets(AttackConfig attackConfig)
