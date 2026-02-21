@@ -1,4 +1,4 @@
-﻿using System.Collections;
+using System.Collections;
 using Core;
 using Game.Player;
 using UnityEngine;
@@ -41,25 +41,28 @@ namespace Game.Unit
         private AnimatorCullingMode _defaultCullingMode;
         private AnimatorUpdateMode _defaultUpdateMode;
         private float _defaultAnimatorSpeed = 1f;
+
         private Coroutine _blinkCoroutine;
+        private Coroutine _forceIdleCoroutine;
+        private Coroutine _attackMoveCoroutine;
         private static readonly int BlinkAmountShaderProperty = Shader.PropertyToID("_BlinkAmount");
 
         public Vector3 Position
         {
-            get { return transform.position; }
-            set { transform.position = value; }
+            get => transform.position;
+            set => transform.position = value;
         }
 
         public Vector3 AimPosition
         {
-            get { return _aimNode.position; }
-            set { _aimNode.position = value; }
+            get => _aimNode.position;
+            set => _aimNode.position = value;
         }
 
         public Quaternion Rotation
         {
-            get { return _rotateNode.rotation; }
-            set { _rotateNode.rotation = value; }
+            get => _rotateNode.rotation;
+            set => _rotateNode.rotation = value;
         }
 
         protected virtual void Awake()
@@ -99,6 +102,12 @@ namespace Game.Unit
         {
             StopBlink();
             SetBlinkAmount(0f);
+
+            if (_forceIdleCoroutine != null)
+            {
+                StopCoroutine(_forceIdleCoroutine);
+                _forceIdleCoroutine = null;
+            }
         }
 
         public void SetCollider(bool value)
@@ -109,100 +118,261 @@ namespace Game.Unit
 
         public float GetCurrentStateLength => _animator != null ? _animator.GetCurrentAnimatorStateInfo(0).length : 0f;
 
-        public void Idle()
-        {
-            PlayAnimation(AnimatorStateType.Idle, Random.Range(0, 1f));
-        }
+        // ----------------------------
+        // Stable animation control
+        // ----------------------------
 
-        public void Walk()
-        {
-            PlayAnimation(AnimatorStateType.Walk, float.NegativeInfinity);
-        }
+        public void Idle() => EnsureState(AnimatorStateType.Idle);
+        public void Walk() => EnsureState(AnimatorStateType.Walk);
+        public void Jump() => EnsureState(AnimatorStateType.Jump);
+        public void Die()  => EnsureState(AnimatorStateType.Die);
+        public void Attack(float normalizedTime = float.NegativeInfinity) => EnsureState(AnimatorStateType.Attack, normalizedTime);
 
-        public void Jump()
-        {
-            PlayAnimation(AnimatorStateType.Jump, float.NegativeInfinity);
-        }
-
-        public void Die()
-        {
-            PlayAnimation(AnimatorStateType.Die, float.NegativeInfinity);
-        }
-
-        private int _nextAttackAnimationIndex;
-
-        public void Attack(float normalizedTime = float.NegativeInfinity)
+        /// <summary>
+        /// IMPORTANT:
+        /// PlayerController가 타겟 없을 때 매 프레임 Idle()을 호출할 수 있음.
+        /// 그래서 "이미 같은 상태면" Play를 다시 호출하지 않도록 막아야 떨림이 사라짐.
+        /// </summary>
+        private void EnsureState(AnimatorStateType state, float normalizedTime = float.NegativeInfinity)
         {
             if (_animator == null)
                 return;
 
-            var attackHashes = new[]
+            // 공격 끝나고 강제 Idle 복귀 예약이 남아있으면, 정상 상태 전환 시 취소
+            if (_forceIdleCoroutine != null && state != AnimatorStateType.Attack)
             {
-                Animator.StringToHash("Attack_01"),
-                Animator.StringToHash("Attack_02"),
-                Animator.StringToHash("Attack_03")
-            };
-
-            int availableCount = 0;
-            for (int i = 0; i < attackHashes.Length; i++)
-            {
-                if (_animator.HasState(0, attackHashes[i]))
-                    availableCount++;
+                StopCoroutine(_forceIdleCoroutine);
+                _forceIdleCoroutine = null;
             }
 
-            if (availableCount > 0)
+            int hash = Animator.StringToHash(state.ToString());
+            var info = _animator.GetCurrentAnimatorStateInfo(0);
+
+            bool isSameState = info.shortNameHash == hash || info.fullPathHash == hash;
+            if (isSameState && float.IsNegativeInfinity(normalizedTime))
+                return; // ✅ 같은 상태면 재시작 금지(Idle 떨림 방지)
+
+            if (float.IsNegativeInfinity(normalizedTime))
             {
-                int pick = _nextAttackAnimationIndex % availableCount;
-                _nextAttackAnimationIndex++;
-
-                for (int i = 0, seen = 0; i < attackHashes.Length; i++)
-                {
-                    if (!_animator.HasState(0, attackHashes[i]))
-                        continue;
-
-                    if (seen == pick)
-                    {
-                        _animator.PlayInFixedTime(attackHashes[i], 0, normalizedTime);
-                        if (ShouldForceImmediateAnimatorUpdate(AnimatorStateType.Attack))
-                            _animator.Update(0);
-                        return;
-                    }
-
-                    seen++;
-                }
+                _animator.Play(hash, 0, 0f);
+            }
+            else
+            {
+                _animator.PlayInFixedTime(hash, 0, normalizedTime);
             }
 
-            PlayAnimation(AnimatorStateType.Attack, normalizedTime);
+            if (ShouldForceImmediateAnimatorUpdate(state))
+                _animator.Update(0f);
         }
 
+        protected virtual bool ShouldForceImmediateAnimatorUpdate(AnimatorStateType animationState)
+        {
+            // 템플릿에서는 즉시 반영이 필요한 케이스가 많아서 true 유지
+            return true;
+        }
+
+        // ----------------------------
+        // Code-driven combo attack
+        // ----------------------------
+
+        /// <summary>
+        /// Animator 전이/조건 없이, 코드가 Attack_01/02/03 상태를 직접 재생.
+        /// (서브 스테이트 머신이 없다고 했으니 Base Layer 기준 이름을 우선으로 시도)
+        /// </summary>
         public void PlayAttackCombo(int comboIndex)
         {
             if (_animator == null)
                 return;
 
             comboIndex = Mathf.Clamp(comboIndex, 1, 3);
-            _animator.SetInteger(Hash_AttackIndex, comboIndex);
-            _animator.SetTrigger(Hash_AttackTrigger);
-            _animator.Update(0);
+
+            // 혹시 남아있는 트리거/인덱스 전이 제거
+            _animator.ResetTrigger(Hash_AttackTrigger);
+            _animator.SetInteger(Hash_AttackIndex, 0);
+
+            if (_forceIdleCoroutine != null)
+            {
+                StopCoroutine(_forceIdleCoroutine);
+                _forceIdleCoroutine = null;
+            }
+
+            // Base Layer state names in your screenshot:
+            // Attack_01 / Attack_02 / Attack_03
+            string s00 = $"Attack_{comboIndex:00}";
+            string s01 = $"Attack{comboIndex:00}";
+            string s1  = $"Attack{comboIndex}";
+            string s_1 = $"Attack_{comboIndex}";
+
+            string[] candidates =
+            {
+                s00, s01, s1, s_1,
+                // just in case Unity stored full paths
+                $"Base Layer.{s00}", $"Base Layer.{s01}", $"Base Layer.{s1}", $"Base Layer.{s_1}",
+            };
+
+            bool played = TryPlayAnyState(candidates, normalizedTime: 0f);
+
+            // Fallback: parameter-based trigger (if someone renamed states)
+            if (!played)
+            {
+                _animator.SetInteger(Hash_AttackIndex, comboIndex);
+                _animator.SetTrigger(Hash_AttackTrigger);
+                _animator.Update(0f);
+                return;
+            }
+
+            // ✅ Attack 끝나면 Idle로만 복귀 (Animator 전이에 의존하지 않음)
+            float clipLen = _animator.GetCurrentAnimatorStateInfo(0).length;
+            if (clipLen <= 0.01f) clipLen = 0.35f;
+
+            float speed = Mathf.Abs(_animator.speed) < 0.0001f ? 1f : _animator.speed;
+            float wait = clipLen / speed;
+
+            _forceIdleCoroutine = StartCoroutine(ForceIdleAfterSeconds(wait));
         }
 
-        private void PlayAnimation(AnimatorStateType animationState, float timeValue)
+        /// <summary>
+        /// AutoCombatConfig의 AttackConfig를 그대로 사용해서 애니를 재생한다.
+        /// - cfg.animatorTrigger가 Animator Trigger 파라미터면 Trigger를 쏘고,
+        /// - 아니라면 상태 이름(Attack_01 등)으로 Play를 시도한다.
+        /// </summary>
+        public void PlayAttackByConfig(AttackConfig cfg)
         {
-            if (_animator == null)
+            if (_animator == null || cfg == null)
                 return;
 
-            var nameHash = Animator.StringToHash(animationState.ToString());
-            _animator.PlayInFixedTime(nameHash, 0, timeValue);
+            // 기존 강제 Idle 복귀 예약 취소
+            if (_forceIdleCoroutine != null)
+            {
+                StopCoroutine(_forceIdleCoroutine);
+                _forceIdleCoroutine = null;
+            }
 
-            if (ShouldForceImmediateAnimatorUpdate(animationState))
-                _animator.Update(0);
+            // 1) Trigger parameter first
+            if (!string.IsNullOrEmpty(cfg.animatorTrigger))
+            {
+                for (int i = 0; i < _animator.parameterCount; i++)
+                {
+                    var p = _animator.GetParameter(i);
+                    if (p.type == AnimatorControllerParameterType.Trigger && p.name == cfg.animatorTrigger)
+                    {
+                        _animator.ResetTrigger(cfg.animatorTrigger);
+                        _animator.SetTrigger(cfg.animatorTrigger);
+                        _animator.Update(0f);
+                        return;
+                    }
+                }
+            }
+
+            // 2) Treat animatorTrigger as a state name (with fallbacks)
+            var candidates = new System.Collections.Generic.List<string>(8);
+            if (!string.IsNullOrEmpty(cfg.animatorTrigger))
+            {
+                candidates.Add(cfg.animatorTrigger);
+                candidates.Add($"Base Layer.{cfg.animatorTrigger}");
+            }
+
+            if (!string.IsNullOrEmpty(cfg.id))
+            {
+                string pretty = cfg.id.Replace("attack", "Attack").Replace("ATK", "Attack");
+                candidates.Add(pretty);
+                candidates.Add($"Base Layer.{pretty}");
+
+                if (cfg.id.Contains("01")) candidates.Add("Attack_01");
+                if (cfg.id.Contains("02")) candidates.Add("Attack_02");
+                if (cfg.id.Contains("03")) candidates.Add("Attack_03");
+            }
+
+            if (!TryPlayAnyState(candidates.ToArray(), normalizedTime: 0f))
+            {
+                EnsureState(AnimatorStateType.Attack, 0f);
+            }
         }
 
-        protected virtual bool ShouldForceImmediateAnimatorUpdate(AnimatorStateType animationState)
+        /// <summary>
+        /// 공격 중 이동(대시). AttackConfig.move.enabled에 의해 호출.
+        /// </summary>
+        public void StartAttackMove(float distance, float duration, AnimationCurve curve, Vector3 worldDirection)
         {
-            return true;
+            if (distance <= 0.0001f || duration <= 0.0001f)
+                return;
+
+            if (_attackMoveCoroutine != null)
+            {
+                StopCoroutine(_attackMoveCoroutine);
+                _attackMoveCoroutine = null;
+            }
+
+            _attackMoveCoroutine = StartCoroutine(AttackMoveCoroutine(distance, duration, curve, worldDirection));
         }
 
+        private IEnumerator AttackMoveCoroutine(float distance, float duration, AnimationCurve curve, Vector3 worldDirection)
+        {
+            Vector3 dir = worldDirection;
+            dir.y = 0f;
+            if (dir.sqrMagnitude < 0.0001f)
+                dir = transform.forward;
+            dir.Normalize();
+
+            Vector3 start = transform.position;
+
+            for (float t = 0f; t < duration; t += Time.deltaTime)
+            {
+                float u = Mathf.Clamp01(t / duration);
+                float k = curve != null && curve.keys != null && curve.length > 0 ? curve.Evaluate(u) : u;
+                transform.position = start + dir * (distance * k);
+                yield return null;
+            }
+
+            transform.position = start + dir * distance;
+            _attackMoveCoroutine = null;
+        }
+
+        private bool TryPlayAnyState(string[] candidates, float normalizedTime)
+        {
+            if (_animator == null || candidates == null || candidates.Length == 0)
+                return false;
+
+            for (int i = 0; i < candidates.Length; i++)
+            {
+                var name = candidates[i];
+                if (string.IsNullOrEmpty(name))
+                    continue;
+
+                int hash = Animator.StringToHash(name);
+                if (!_animator.HasState(0, hash))
+                    continue;
+
+                _animator.Play(hash, 0, normalizedTime);
+                _animator.Update(0f);
+                return true;
+            }
+
+            return false;
+        }
+
+        private IEnumerator ForceIdleAfterSeconds(float seconds)
+        {
+            float wait = Mathf.Max(0.05f, seconds);
+            yield return new WaitForSeconds(wait);
+
+            if (_animator == null)
+            {
+                _forceIdleCoroutine = null;
+                yield break;
+            }
+
+            // ✅ Idle로 "한 번만" 복귀 (랜덤 normalizedTime 금지: 떨림 원인)
+            int idleHash = Animator.StringToHash(AnimatorStateType.Idle.ToString());
+            _animator.Play(idleHash, 0, 0f);
+            _animator.Update(0f);
+
+            _forceIdleCoroutine = null;
+        }
+
+        // ----------------------------
+        // Animator controller binding
+        // ----------------------------
 
         public void SetMenuPreviewMode(bool value)
         {
@@ -238,6 +408,10 @@ namespace Game.Unit
             _animator.Rebind();
             _animator.Update(0f);
         }
+
+        // ----------------------------
+        // Blink/Damage
+        // ----------------------------
 
         public void Damage(float blinkDuration)
         {
