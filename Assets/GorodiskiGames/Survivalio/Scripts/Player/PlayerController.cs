@@ -170,7 +170,6 @@ namespace Game.Player
         private const string _damageFormat = "-{0}";
         private const float _distance = 1.5f;
         private const float _speed = 15f;
-        private const float COMBO_RESET_WINDOW = 0.9f;
 
         private readonly PlayerView _view;
         private readonly PlayerModel _model;
@@ -271,7 +270,7 @@ namespace Game.Player
                 StopAutoMovement();
                 ResetComboChain();
 
-                if (!_view.IsAttackPlaying)
+                if (!_view.IsAttackPlaying || _view.CurrentAttackNormalizedTime >= 0.98f)
                     _view.Idle();
 
                 _view.SetMoveSpeed(0f);
@@ -487,7 +486,7 @@ namespace Game.Player
             _pendingHitTarget = target;
             _pendingHitGameManager = gameManager;
 
-            if (Time.time - _lastAttackTime > COMBO_RESET_WINDOW)
+            if (_comboIndex < 0 || _comboIndex > 3)
                 _comboIndex = 0;
 
             _comboIndex = (_comboIndex % 3) + 1;
