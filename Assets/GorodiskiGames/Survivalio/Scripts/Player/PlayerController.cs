@@ -170,7 +170,6 @@ namespace Game.Player
         private const string _damageFormat = "-{0}";
         private const float _distance = 1.5f;
         private const float _speed = 15f;
-        private const float COMBO_RESET_WINDOW = 0.9f;
 
         private readonly PlayerView _view;
         private readonly PlayerModel _model;
@@ -199,6 +198,7 @@ namespace Game.Player
         private GameManager _pendingHitGameManager;
         private bool _hadTargetLastTick;
         private bool _isAutoMoving;
+        private bool _comboResetByMovement;
         private AttackConfig _currentAttackConfig;
         private readonly HashSet<EnemyController> _hitEnemiesInCurrentAttack = new HashSet<EnemyController>();
 
@@ -268,7 +268,9 @@ namespace Game.Player
             if (_currentTarget == null)
             {
                 StopAutoMovement();
-                if (_hadTargetLastTick)
+                ResetComboChain();
+
+                if (!_view.IsAttackPlaying || _view.CurrentAttackNormalizedTime >= 0.98f)
                     _view.Idle();
 
                 _view.SetMoveSpeed(0f);
@@ -292,6 +294,7 @@ namespace Game.Player
                 return;
             }
 
+            _comboResetByMovement = false;
             StopAutoMovement();
 
             if (currentTime < _nextAttackTime)
@@ -355,7 +358,10 @@ namespace Game.Player
                 return;
 
             if (bestEnemy == null && _currentTarget != null)
+            {
                 LogCombat($"Target lost: {_currentTarget.View.name}");
+                ResetComboChain();
+            }
             else if (bestEnemy != null)
                 LogCombat($"Target acquired: {bestEnemy.View.name}");
 
@@ -386,6 +392,8 @@ namespace Game.Player
         {
             if (_autoCombatConfig.outOfRangeBehaviour == OutOfRangeBehaviour.RotateOnly)
             {
+                if (!_view.IsAttackPlaying)
+                    _view.Idle();
                 StopAutoMovement();
                 return;
             }
@@ -407,6 +415,12 @@ namespace Game.Player
             _view.Position += direction * moveSpeed * Time.deltaTime;
 
             _view.SetMoveSpeed(1f);
+            if (!_comboResetByMovement)
+            {
+                ResetComboChain();
+                _comboResetByMovement = true;
+            }
+
             if (!_isAutoMoving)
             {
                 _view.Walk();
@@ -454,6 +468,16 @@ namespace Game.Player
             StartAttackCombo(_currentTarget, _gameManager);
         }
 
+        private void ResetComboChain()
+        {
+            _comboIndex = 0;
+            _lastAttackTime = -999f;
+            _currentAttackConfig = null;
+            _hitEnemiesInCurrentAttack.Clear();
+            _pendingHitTarget = null;
+            _pendingHitGameManager = null;
+        }
+
         public void StartAttackCombo(UnitController target, GameManager gameManager)
         {
             if (target == null)
@@ -462,7 +486,7 @@ namespace Game.Player
             _pendingHitTarget = target;
             _pendingHitGameManager = gameManager;
 
-            if (Time.time - _lastAttackTime > COMBO_RESET_WINDOW)
+            if (_comboIndex < 0 || _comboIndex > 3)
                 _comboIndex = 0;
 
             _comboIndex = (_comboIndex % 3) + 1;
@@ -535,12 +559,14 @@ namespace Game.Player
         {
             if (_comboConfigs != null && _comboConfigs.Length > 0)
             {
-                var idx = Mathf.Clamp(comboIndex - 1, 0, _comboConfigs.Length - 1);
-                if (_comboConfigs[idx] != null)
+                var idx = comboIndex - 1;
+                if (idx >= 0 && idx < _comboConfigs.Length && _comboConfigs[idx] != null)
                     return _comboConfigs[idx];
+
+                return null;
             }
 
-            return _attackConfig;
+            return null;
         }
 
         private List<EnemyController> ResolveAttackTargets(AttackConfig attackConfig)
