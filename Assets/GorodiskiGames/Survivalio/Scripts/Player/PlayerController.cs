@@ -265,15 +265,21 @@ namespace Game.Player
                 _nextScanTime = currentTime + Mathf.Max(0.05f, _autoCombatConfig.targetScanInterval);
             }
 
+            var isManualWalkState = _stateManager.Current is PlayerWalkState;
+
             if (_currentTarget == null)
             {
                 StopAutoMovement();
                 ResetComboChain();
 
-                if (!_view.IsAttackPlaying || _view.CurrentAttackNormalizedTime >= 0.98f)
-                    _view.Idle();
+                if (!isManualWalkState)
+                {
+                    if (!_view.IsAttackPlaying || _view.CurrentAttackNormalizedTime >= 0.98f)
+                        _view.Idle();
 
-                _view.SetMoveSpeed(0f);
+                    _view.SetMoveSpeed(0f);
+                }
+
                 _hadTargetLastTick = false;
                 return;
             }
@@ -288,8 +294,15 @@ namespace Game.Player
 
             RotateToTarget(targetPosition);
 
-            if (distance > desiredRange)
+            // 공격 가능 거리 안에 들어오면 자동 이동 없이 즉시 공격 로직으로 진입한다.
+            if (distance > attackRange)
             {
+                if (isManualWalkState)
+                {
+                    StopAutoMovement();
+                    return;
+                }
+
                 HandleApproach(targetPosition, desiredRange);
                 return;
             }
