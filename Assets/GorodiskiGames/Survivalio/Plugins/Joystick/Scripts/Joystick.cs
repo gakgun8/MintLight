@@ -136,7 +136,9 @@ namespace Game.Controls
 
             if (_isPointerDown)
             {
-                UpdatePointerInputFromScreenPosition(Input.mousePosition);
+                // 터치 드래그 중에는 OnDrag에서 받은 포인터 좌표를 그대로 유지한다.
+                // 모바일 환경에서 Input.mousePosition을 매 프레임 섞어 쓰면 좌표가 간헐적으로 0 근처로 튀면서
+                // HasInput이 false로 떨어지고 Walk 애니메이션이 Idle로 끊기는 현상이 발생할 수 있다.
                 FireInput();
             }
 
