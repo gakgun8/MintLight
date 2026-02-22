@@ -1,3 +1,5 @@
+using UnityEngine;
+
 namespace Game.Player.States
 {
     public sealed class PlayerIdleState : PlayerCheckCollisionState
@@ -23,6 +25,8 @@ namespace Game.Player.States
         {
             if (_isPause)
                 return;
+
+            _player.ReportManualInput(Vector2.zero);
 
             HandleBarsPosition();
             CheckCollisionBullets();

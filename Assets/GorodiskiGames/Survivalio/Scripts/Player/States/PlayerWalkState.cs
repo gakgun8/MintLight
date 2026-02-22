@@ -44,6 +44,7 @@ namespace Game.Player.States
 
             if (!_gameView.Joystick.HasInput)
             {
+                _player.ReportManualInput(Vector2.zero);
                 _player.Idle();
                 return;
             }
@@ -77,6 +78,7 @@ namespace Game.Player.States
             _inputDirection.y = _gameView.Joystick.Vertical;
 
             _inputDirection = _inputDirection.normalized;
+            _player.ReportManualInput(_inputDirection);
             _player.View.SetMoveSpeed(_inputDirection.magnitude);
         }
 

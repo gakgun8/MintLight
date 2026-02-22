@@ -201,6 +201,12 @@ namespace Game.Player
         private bool _comboResetByMovement;
         private AttackConfig _currentAttackConfig;
         private readonly HashSet<EnemyController> _hitEnemiesInCurrentAttack = new HashSet<EnemyController>();
+        private const float AutoMoveResumeDelay = 0.15f;
+        private const float MovementDebugLogInterval = 0.35f;
+        private float _manualInputMagnitude;
+        private Vector3 _manualMoveDirection;
+        private float _lastManualInputTime = -999f;
+        private float _nextMovementDebugLogTime;
 
         public PlayerController(PlayerView view, PlayerModel model, Context context) : base(view)
         {
@@ -265,9 +271,13 @@ namespace Game.Player
                 _nextScanTime = currentTime + Mathf.Max(0.05f, _autoCombatConfig.targetScanInterval);
             }
 
-            var hasManualInput = _stateManager.Current is PlayerWalkState;
+            var hasManualInput = _manualInputMagnitude > 0.001f;
+            var hasTarget = _currentTarget != null;
+            var canResumeAutoMove = !hasManualInput && (currentTime - _lastManualInputTime) >= AutoMoveResumeDelay;
+            var autoMoveEligible = hasTarget && !_view.IsAttackPlaying;
+            var allowAutoMove = autoMoveEligible && canResumeAutoMove;
 
-            if (_currentTarget == null)
+            if (!hasTarget)
             {
                 StopAutoMovement();
                 ResetComboChain();
@@ -281,6 +291,7 @@ namespace Game.Player
                 }
 
                 _hadTargetLastTick = false;
+                LogMovementState(hasManualInput, hasTarget, allowAutoMove, Vector3.zero, Vector3.zero);
                 return;
             }
 
@@ -291,8 +302,23 @@ namespace Game.Player
             var stopDistance = Mathf.Max(0.1f, _autoCombatConfig.stopDistance);
             var desiredRange = Mathf.Max(stopDistance, attackRange * 0.95f);
             var distance = Vector3.Distance(_view.Position, targetPosition);
+            var toTarget = targetPosition - _view.Position;
+            toTarget.y = 0f;
+            var autoDir = toTarget.sqrMagnitude > 0.0001f ? toTarget.normalized : Vector3.zero;
+            var finalMoveDir = hasManualInput ? _manualMoveDirection : (allowAutoMove ? autoDir : Vector3.zero);
+
+            LogMovementState(hasManualInput, hasTarget, allowAutoMove, autoDir, finalMoveDir);
+
+            if (hasManualInput && autoMoveEligible)
+                Debug.LogWarning("[PlayerMove] Manual input is active but auto-move eligibility remained true. Auto movement override will be enforced.");
 
             RotateToTarget(targetPosition);
+
+            if (!allowAutoMove)
+            {
+                StopAutoMovement();
+                return;
+            }
 
             // 공격 가능 거리 안에 들어오면 자동 이동 없이 즉시 공격 로직으로 진입한다.
             if (distance > attackRange)
@@ -447,6 +473,26 @@ namespace Game.Player
                 _view.Idle();
 
             LogCombat("Auto approach stopped.");
+        }
+
+        public void ReportManualInput(Vector2 inputDirection)
+        {
+            _manualInputMagnitude = inputDirection.magnitude;
+            _manualMoveDirection = new Vector3(inputDirection.x, 0f, inputDirection.y);
+
+            if (_manualInputMagnitude > 0.001f)
+                _lastManualInputTime = _timer.Time;
+        }
+
+        private void LogMovementState(bool hasManualInput, bool hasTarget, bool allowAutoMove, Vector3 autoDir, Vector3 finalMoveDir)
+        {
+            if (_timer.Time < _nextMovementDebugLogTime)
+                return;
+
+            _nextMovementDebugLogTime = _timer.Time + MovementDebugLogInterval;
+            var speed = finalMoveDir.magnitude * _model.WalkSpeed;
+            Debug.Log($"[PlayerMove] hasManualInput={hasManualInput} inputMag={_manualInputMagnitude:F3} allowAutoMove={allowAutoMove} hasTarget={hasTarget} " +
+                      $"manualDir={_manualMoveDirection} autoDir={autoDir} finalMoveDir={finalMoveDir} speed={speed:F3}");
         }
 
         private void TryAttack(float currentTime)
