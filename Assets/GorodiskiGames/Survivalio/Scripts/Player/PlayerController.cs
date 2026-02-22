@@ -570,6 +570,11 @@ if (_view.IsAttackPlaying && _view.CurrentAttackNormalizedTime < 0.9f)
             var cooldownSource = nextConfig != null ? nextConfig : _attackConfig;
             var cooldown = cooldownSource != null ? Mathf.Max(0.01f, cooldownSource.attackCooldown) : 0.5f;
             
+            // IMPORTANT:
+            // cooldown was computed but not applied, so attack could be requested every tick.
+            // That causes Attack_01 to restart repeatedly before finishing.
+            _nextAttackTime = currentTime + cooldown;
+
 
             _lastAttackRequestTime = currentTime;
             _view.LogAttackTriggerRequest("PlayerController.TryAttack");
