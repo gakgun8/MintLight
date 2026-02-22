@@ -15,6 +15,7 @@ namespace Game.Player
     public sealed class PlayerCombatController : MonoBehaviour, IAnimEventReceiver
     {
         [SerializeField] private PlayerView _view;
+        [SerializeField] private bool _enableDebugLogs = false;
 
         private PlayerModel _model;
         private AutoCombatConfig _autoCombatConfig;
@@ -36,14 +37,25 @@ namespace Game.Player
             _autoCombatConfig = autoCombatConfig;
             _defaultAttackConfig = defaultAttackConfig;
             _comboConfigs = _autoCombatConfig != null ? _autoCombatConfig.combo : null;
+            LogCombat("Initialized combat controller.");
         }
 
-        public bool CanRequestAttack(float now) => _view != null && now >= _nextAttackTime && !_view.IsAttackPlaying;
+        public bool CanRequestAttack(float now)
+        {
+            var canAttack = _view != null && now >= _nextAttackTime && !_view.IsAttackPlaying;
+            if (!canAttack)
+                LogCombat($"Attack request blocked. now={now:F2} nextAttack={_nextAttackTime:F2} isAttackPlaying={(_view != null && _view.IsAttackPlaying)}");
+
+            return canAttack;
+        }
 
         public void RequestAttack(UnitController target, GameManager gameManager, float now)
         {
             if (_view == null || _model == null || target == null)
+            {
+                LogCombat("RequestAttack ignored. Missing view/model/target.");
                 return;
+            }
 
             _pendingHitTarget = target;
             _pendingHitGameManager = gameManager;
@@ -57,6 +69,7 @@ namespace Game.Player
             _nextAttackTime = now + cooldown;
 
             _view.PlayAttackCombo(_comboIndex);
+            LogCombat($"Attack requested. comboIndex={_comboIndex} cooldown={cooldown:F2}");
         }
 
         public void ResetCombo()
@@ -66,6 +79,7 @@ namespace Game.Player
             _pendingHitTarget = null;
             _pendingHitGameManager = null;
             _hitEnemiesInCurrentAttack.Clear();
+            LogCombat("Combo reset.");
         }
 
         public void OnFireAttackHit()
@@ -74,6 +88,7 @@ namespace Game.Player
             var targets = ResolveAttackTargets(attackConfig);
             if (targets.Count == 0)
             {
+                LogCombat("OnFireAttackHit: no targets in attack shape.");
                 _pendingHitTarget = null;
                 _pendingHitGameManager = null;
                 return;
@@ -96,6 +111,7 @@ namespace Game.Player
                 _hitEnemiesInCurrentAttack.Add(enemy);
             }
 
+            LogCombat($"OnFireAttackHit applied. targets={targets.Count} damage={damage}");
             _pendingHitTarget = null;
             _pendingHitGameManager = null;
         }
@@ -179,6 +195,12 @@ namespace Game.Player
                     var angle = cfg.sector.angle > 0.01f ? cfg.sector.angle : 90f;
                     return Vector3.Angle(forward, delta.normalized) <= angle * 0.5f;
             }
+        }
+
+        private void LogCombat(string message)
+        {
+            if (_enableDebugLogs)
+                Debug.Log($"[PlayerCombatController] {message}");
         }
     }
 }

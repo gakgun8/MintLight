@@ -253,8 +253,7 @@ namespace Game.Player
 
             _combatController.Initialize(_view, _model, _autoCombatConfig, _attackConfig);
 
-            var relay = _view.GetComponentInChildren<AnimationEventsRelay>(true);
-            if (relay != null) relay.RegisterReceiver(_combatController);
+            RegisterAnimationRelay();
             _timer.TICK += OnTick;
 
             _lastTickPosition = _view.Position;
@@ -263,8 +262,7 @@ namespace Game.Player
         public void Dispose()
         {
             _timer.TICK -= OnTick;
-            var relay = _view.GetComponentInChildren<AnimationEventsRelay>(true);
-            if (relay != null) relay.UnregisterReceiver(_combatController);
+            UnregisterAnimationRelay();
             _stateManager.Dispose();
             Visibility(false);
         }
@@ -523,14 +521,19 @@ namespace Game.Player
                 return;
             }
 
-            
+            if (_combatController == null || _gameManager == null)
+            {
+                LogCombat("Attack skipped - combat controller or game manager missing.");
+                return;
+            }
+
             // ✅ Never request attacks while moving (prevents Animator transition churn: Walk <-> Attack).
             if (currentSpeed > 0.05f || _isAutoMoving || _hasManualInput)
             {
                 LogCombat($"Attack skipped - moving. speed={currentSpeed:F2} autoMove={_isAutoMoving} manual={_hasManualInput}");
                 return;
             }
-if (_view.IsAttackPlaying && _view.CurrentAttackNormalizedTime < 0.9f)
+            if (_view.IsAttackPlaying && _view.CurrentAttackNormalizedTime < 0.9f)
             {
                 LogCombat($"Attack skipped - attack locked. progress={_view.CurrentAttackNormalizedTime:F2}");
                 return;
@@ -547,7 +550,8 @@ if (_view.IsAttackPlaying && _view.CurrentAttackNormalizedTime < 0.9f)
         private void ResetComboChain()
         {
             _lastAttackTime = -999f;
-            _combatController.ResetCombo();
+            if (_combatController != null)
+                _combatController.ResetCombo();
         }
 
         private void LogCombat(string message)
@@ -576,6 +580,28 @@ if (_view.IsAttackPlaying && _view.CurrentAttackNormalizedTime < 0.9f)
             }
 
             return null;
+        }
+
+
+        private void RegisterAnimationRelay()
+        {
+            var relay = _view.GetComponentInChildren<AnimationEventsRelay>(true);
+            if (relay == null)
+            {
+                LogCombat("AnimationEventsRelay not found. Attack hit event will not be fired.");
+                return;
+            }
+
+            relay.RegisterReceiver(_combatController);
+        }
+
+        private void UnregisterAnimationRelay()
+        {
+            var relay = _view.GetComponentInChildren<AnimationEventsRelay>(true);
+            if (relay == null)
+                return;
+
+            relay.UnregisterReceiver(_combatController);
         }
 
         private void Visibility(bool value)

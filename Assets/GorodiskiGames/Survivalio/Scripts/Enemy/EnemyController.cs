@@ -59,6 +59,7 @@ namespace Game.Enemy
     public sealed class EnemyController : UnitController, IDisposable
     {
         private const string _damageFormat = "-{0}";
+        private const string DebugLogPrefix = "[EnemyController]";
 
         public EnemyModel Model => _model;
         public int Index { get; internal set; }
@@ -71,12 +72,15 @@ namespace Game.Enemy
         private readonly StateManager<EnemyState> _stateManager;
         private readonly GameManager _gameManager;
         private readonly EnemyCombatController _combatController;
+        private readonly bool _enableDebugLogs;
 
         public EnemyController(EnemyView view, Context context, bool isBoss) : base(view)
         {
             _model = new EnemyModel(view.Config);
             _view = view;
             _isBoss = isBoss;
+            var gameConfig = context.Get<GameConfig>();
+            _enableDebugLogs = gameConfig != null && gameConfig.LogEntityMap[EntityType.Enemy];
             _gameManager = context.Get<GameManager>();
 
             var subContext = new Context(context);
@@ -96,14 +100,14 @@ namespace Game.Enemy
             _combatController = _view.GetComponent<EnemyCombatController>();
             if (_combatController == null)
                 _combatController = _view.gameObject.AddComponent<EnemyCombatController>();
-            var relay = _view.GetComponentInChildren<AnimationEventsRelay>(true);
-            if (relay != null) relay.RegisterReceiver(_combatController);
+
+            RegisterAnimationRelay();
+            LogDebug($"Initialized. isBoss={_isBoss} hp={_model.Health} speed={_model.Speed}");
         }
         
         public void Dispose()
         {
-            var relay = _view.GetComponentInChildren<AnimationEventsRelay>(true);
-            if (relay != null) relay.UnregisterReceiver(_combatController);
+            UnregisterAnimationRelay();
             _stateManager.Dispose();
             _view.PlayEffect(false);
         }
@@ -130,6 +134,12 @@ namespace Game.Enemy
 
         public void TryToDamage(int damage, Vector3 direction)
         {
+            if (_view == null || _model == null)
+            {
+                LogDebug("TryToDamage ignored because view/model is null.");
+                return;
+            }
+
             damage = Mathf.Min(damage, _model.Health);
 
             if (damage <= 0)
@@ -154,7 +164,35 @@ namespace Game.Enemy
 
             var info = string.Format(_damageFormat, damage);
             _gameManager.FireSpawnNotificationPopUp(info, position, colorType);
+
+            LogDebug($"Damaged -{damage}. hp={_model.Health}/{_model.HealthNominal}");
+        }
+
+        private void RegisterAnimationRelay()
+        {
+            var relay = _view.GetComponentInChildren<AnimationEventsRelay>(true);
+            if (relay == null)
+            {
+                LogDebug("AnimationEventsRelay not found. Enemy animation events will be ignored.");
+                return;
+            }
+
+            relay.RegisterReceiver(_combatController);
+        }
+
+        private void UnregisterAnimationRelay()
+        {
+            var relay = _view.GetComponentInChildren<AnimationEventsRelay>(true);
+            if (relay == null)
+                return;
+
+            relay.UnregisterReceiver(_combatController);
+        }
+
+        private void LogDebug(string message)
+        {
+            if (_enableDebugLogs)
+                Debug.Log($"{DebugLogPrefix} {_view.name}: {message}");
         }
     }
 }
-
