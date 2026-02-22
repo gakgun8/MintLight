@@ -50,7 +50,6 @@ namespace Game.Unit
         private static readonly int Hash_IsWalk = Animator.StringToHash("IsWalk");
 
         private readonly List<int> _attackStateHashes = new List<int>(8);
-        private int _currentBaseStateHash;
         private bool _isAttackPlaying;
         private float _attackLockUntilTime;
         private bool _hasSpeedParameter;
@@ -101,7 +100,6 @@ namespace Game.Unit
                 _defaultCullingMode = _animator.cullingMode;
                 _defaultUpdateMode = _animator.updateMode;
                 _defaultAnimatorSpeed = _animator.speed;
-                _currentBaseStateHash = _animator.GetCurrentAnimatorStateInfo(0).shortNameHash;
                 CacheAnimatorParameters();
                 CacheAttackHashes();
             }
@@ -185,8 +183,6 @@ namespace Game.Unit
                 return;
 
             var info = _animator.GetCurrentAnimatorStateInfo(0);
-            _currentBaseStateHash = info.shortNameHash;
-
             if (Time.time >= _nextStopDebugLogTime)
             {
                 _nextStopDebugLogTime = Time.time + 0.25f;
@@ -221,10 +217,7 @@ namespace Game.Unit
                 return;
 
             if ((state == AnimatorStateType.Walk || state == AnimatorStateType.Idle) && (_hasSpeedParameter || _hasIsWalkParameter))
-            {
-                _currentBaseStateHash = _animator.GetCurrentAnimatorStateInfo(0).shortNameHash;
                 return;
-            }
 
             int hash = Animator.StringToHash(state.ToString());
             var info = _animator.GetCurrentAnimatorStateInfo(0);
@@ -250,7 +243,7 @@ namespace Game.Unit
                     // Speed 파라미터가 없다면, 현재 상태가 Walk면 Idle로 못 바꾸게 방어
                     var cur = _animator.GetCurrentAnimatorStateInfo(0);
                     int walkHash = Animator.StringToHash(AnimatorStateType.Walk.ToString());
-                    if (cur.shortNameHash == walkHash || _currentBaseStateHash == walkHash)
+                    if (cur.shortNameHash == walkHash)
                         return;
                 }
             }
@@ -269,7 +262,7 @@ namespace Game.Unit
                     _animator.SetBool(Hash_IsWalk, false);
             }
 
-            bool isSameState = info.shortNameHash == hash || _currentBaseStateHash == hash;
+            bool isSameState = info.shortNameHash == hash;
             if (isSameState && float.IsNegativeInfinity(normalizedTime))
                 return; // ✅ 같은 상태면 재시작 금지(Idle 떨림 방지)
 
@@ -325,19 +318,10 @@ namespace Game.Unit
             _animator.CrossFadeInFixedTime(targetHash, 0.08f, 0,
                 float.IsNegativeInfinity(normalizedTime) ? 0f : normalizedTime);
 
-            _currentBaseStateHash = Animator.StringToHash(GetShortStateName(targetStateName));
             LogAnimationStateChange($"State => {targetStateName} (requested:{state})");
             return true;
         }
 
-        private static string GetShortStateName(string stateName)
-        {
-            if (string.IsNullOrEmpty(stateName))
-                return string.Empty;
-
-            int lastDot = stateName.LastIndexOf('.');
-            return lastDot >= 0 && lastDot + 1 < stateName.Length ? stateName.Substring(lastDot + 1) : stateName;
-        }
 
         private string[] BuildStateCandidates(AnimatorStateType state)
         {
@@ -440,9 +424,10 @@ namespace Game.Unit
             // 1) Trigger parameter first
             if (!string.IsNullOrEmpty(cfg.animatorTrigger))
             {
-                for (int i = 0; i < _animator.parameterCount; i++)
+                var parameters = _animator.parameters;
+                for (int i = 0; i < parameters.Length; i++)
                 {
-                    var p = _animator.GetParameter(i);
+                    var p = parameters[i];
                     if (p.type == AnimatorControllerParameterType.Trigger && p.name == cfg.animatorTrigger)
                     {
                         _animator.ResetTrigger(cfg.animatorTrigger);
@@ -538,7 +523,6 @@ namespace Game.Unit
 
                 _animator.CrossFadeInFixedTime(hash, 0.05f, 0, normalizedTime);
                 _animator.Update(0f);
-                _currentBaseStateHash = hash;
                 LogAnimationStateChange($"State => {name}");
                 return true;
             }
@@ -669,7 +653,6 @@ namespace Game.Unit
             }
 
             CacheAttackHashes();
-            _currentBaseStateHash = _animator.GetCurrentAnimatorStateInfo(0).shortNameHash;
         }
 
         // ----------------------------
