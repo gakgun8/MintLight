@@ -314,7 +314,10 @@ public void SetMoveSpeed(float speed)
                         _animator.SetFloat(Hash_Speed, 0f);
                 }
 
-                return;
+                // NOTE:
+                // Some controllers use Speed/IsWalk to drive a locomotion blend tree,
+                // while others still require explicit Walk/Idle state transitions.
+                // Do not early-return here; keep parameters updated and then attempt state transition fallback.
             }
 
             int hash = Animator.StringToHash(state.ToString());
