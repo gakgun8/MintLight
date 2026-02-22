@@ -80,7 +80,7 @@ namespace Game.Enemy
             _view = view;
             _isBoss = isBoss;
             var gameConfig = context.Get<GameConfig>();
-            _enableDebugLogs = gameConfig != null && gameConfig.LogEntityMap[EntityType.Enemy];
+            _enableDebugLogs = gameConfig != null && gameConfig.LogEntityMap.TryGetValue(EntityType.Player, out var showLogs) && showLogs;
             _gameManager = context.Get<GameManager>();
 
             var subContext = new Context(context);
