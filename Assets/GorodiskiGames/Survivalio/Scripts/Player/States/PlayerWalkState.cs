@@ -7,6 +7,8 @@ namespace Game.Player.States
         private const float AttackRequestLocomotionLockDuration = 0.20f;
         private const float StalledMoveDistanceEpsilon = 0.0001f;
         private const float LargeUnscaledDeltaTimeThreshold = 0.05f;
+        private const float InputReleaseGraceTime = 0.10f;
+        private const float InputDeadzone = 0.10f;
 
         private float _walkSpeed;
         private float _rotateSpeed;
@@ -14,6 +16,7 @@ namespace Game.Player.States
         private Vector3 _moveDirection;
         private int _lastMoveAppliedFrame;
         private int _stalledMoveFrameCount;
+        private float _lastInputDetectedTime;
 
         public override void Initialize()
         {
@@ -27,6 +30,7 @@ namespace Game.Player.States
 
             _lastMoveAppliedFrame = Time.frameCount;
             _stalledMoveFrameCount = 0;
+            _lastInputDetectedTime = _timer.Time;
 
             _timer.TICK += OnTick;
         }
@@ -43,14 +47,23 @@ namespace Game.Player.States
             if(_isPause)
                 return;
 
-            if (!_gameView.Joystick.HasInput)
+            var rawInput = new Vector2(_gameView.Joystick.Horizontal, _gameView.Joystick.Vertical);
+            var inputMagnitude = rawInput.magnitude;
+            var hasEffectiveInput = inputMagnitude > InputDeadzone;
+
+            if (hasEffectiveInput)
+                _lastInputDetectedTime = _timer.Time;
+
+            // Brief joystick read dropouts can flip HasInput for a frame and cause Walk->Idle jitter.
+            // Keep Walk state for a short grace window before switching back to Idle.
+            if (!hasEffectiveInput && (_timer.Time - _lastInputDetectedTime) > InputReleaseGraceTime)
             {
                 _player.ReportManualInput(Vector2.zero);
                 _player.Idle();
                 return;
             }
 
-            HandleInput();
+            HandleInput(rawInput);
             HandleMovement();
             HandleRotation();
             HandleBarsPosition();
@@ -73,10 +86,17 @@ namespace Game.Player.States
             }
         }
 
-        private void HandleInput()
+        private void HandleInput(Vector2 rawInput)
         {
-            _inputDirection.x = _gameView.Joystick.Horizontal;
-            _inputDirection.y = _gameView.Joystick.Vertical;
+            _inputDirection = rawInput;
+
+            var rawMagnitude = _inputDirection.magnitude;
+            if (rawMagnitude <= InputDeadzone)
+            {
+                _inputDirection = Vector2.zero;
+                _player.ReportManualInput(Vector2.zero);
+                return;
+            }
 
             _inputDirection = _inputDirection.normalized;
             _player.ReportManualInput(_inputDirection);
