@@ -210,6 +210,8 @@ namespace Game.Player
         private float _lastManualInputTime = -999f;
         private float _nextMovementDebugLogTime;
         private Vector3 _lastTickPosition;
+        private float _nextIdleEnsureTime;
+        private const float IdleEnsureInterval = 0.08f;
 
         public bool HasManualInput => _hasManualInput;
         public float LastAttackRequestTime => _lastAttackRequestTime;
@@ -309,10 +311,8 @@ namespace Game.Player
 
                 if (!hasManualInput)
                 {
-                    if (!_view.IsAttackPlaying || _view.CurrentAttackNormalizedTime >= 0.98f)
-                        _view.Idle();
-
                     _view.SetMoveSpeed(0f);
+                    EnsureIdleWhenStopped();
                 }
 
                 _hadTargetLastTick = false;
@@ -457,9 +457,8 @@ namespace Game.Player
         {
             if (_autoCombatConfig.outOfRangeBehaviour == OutOfRangeBehaviour.RotateOnly)
             {
-                if (!_view.IsAttackPlaying)
-                    _view.Idle();
                 StopAutoMovement();
+                EnsureIdleWhenStopped();
                 return;
             }
 
@@ -472,6 +471,7 @@ namespace Game.Player
             if (sqrDistance <= desiredRange * desiredRange)
             {
                 StopAutoMovement();
+                EnsureIdleWhenStopped();
                 return;
             }
 
@@ -504,10 +504,20 @@ namespace Game.Player
 
             _isAutoMoving = false;
             _view.SetMoveSpeed(0f);
-            if (!_view.IsAttackPlaying)
-                _view.Idle();
+            EnsureIdleWhenStopped();
 
             LogCombat("Auto approach stopped.");
+        }
+
+        private void EnsureIdleWhenStopped()
+        {
+            if (_timer.Time < _nextIdleEnsureTime)
+                return;
+
+            _nextIdleEnsureTime = _timer.Time + IdleEnsureInterval;
+
+            if (!_view.IsAttackPlaying || _view.CurrentAttackNormalizedTime >= 0.98f)
+                _view.Idle();
         }
 
         public void ReportManualInput(Vector2 inputDirection)
@@ -560,6 +570,7 @@ if (_view.IsAttackPlaying && _view.CurrentAttackNormalizedTime < 0.9f)
             
 
             _lastAttackRequestTime = currentTime;
+            _view.LogAttackTriggerRequest("PlayerController.TryAttack");
 StartAttackCombo(_currentTarget, _gameManager);
         }
 

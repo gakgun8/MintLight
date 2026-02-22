@@ -33,6 +33,10 @@ namespace Game.Unit
         [SerializeField] private Renderer[] _renderers;
         [SerializeField] private float _radius = 0.5f;
         [SerializeField] private float _walkFallbackSpeed = 1.0f; // Walk()만 호출될 때 BlendTree가 Idle로 붙는 것 방지
+        [Header("Animation Diagnostics")]
+        [SerializeField] private bool _enableAnimationDiagnostics = true;
+        [SerializeField] private float _animationDiagnosticsInterval = 0.25f;
+        [SerializeField] private float _locomotionCallLogInterval = 0.2f;
 
         public Transform RotateNode => _rotateNode;
         public Transform BulletNode => _bulletNode;
@@ -57,6 +61,8 @@ namespace Game.Unit
         private bool _hasSpeedParameter;
         private bool _hasIsWalkParameter;
         private float _moveAnimHoldUntil;
+        private float _nextAnimationDiagnosticsTime;
+        private float _nextLocomotionCallLogTime;
 
         public Vector3 Position
         {
@@ -145,11 +151,14 @@ namespace Game.Unit
 
         public void Idle()
         {
+            LogLocomotionCall("Idle()");
+
             // Prefer parameter-driven locomotion when available.
             if (_animator != null && (_hasSpeedParameter || _hasIsWalkParameter))
             {
                 if (_hasSpeedParameter) _animator.SetFloat(Hash_Speed, 0f);
                 if (_hasIsWalkParameter) _animator.SetBool(Hash_IsWalk, false);
+                LogAnimatorSnapshot("Idle:param", false);
                 return;
             }
 
@@ -158,6 +167,8 @@ namespace Game.Unit
 
 public void Walk()
 {
+    LogLocomotionCall("Walk()");
+
     if (_animator != null)
     {
         // ✅ Walk가 "시작만" 나오고 멈추는 경우 대부분 Speed가 0으로 떨어져 BlendTree가 Idle로 붙는 케이스
@@ -173,6 +184,7 @@ public void Walk()
     }
 
     _moveAnimHoldUntil = Time.time + 0.35f;
+    LogAnimatorSnapshot("Walk:param", false);
     EnsureState(AnimatorStateType.Walk);
 }
 
@@ -180,7 +192,7 @@ public void Jump() => EnsureState(AnimatorStateType.Jump);
         public void Die()  => EnsureState(AnimatorStateType.Die);
         public void Attack(float normalizedTime = float.NegativeInfinity) => EnsureState(AnimatorStateType.Attack, normalizedTime);
 
-        public void SetMoveSpeed(float speed)
+public void SetMoveSpeed(float speed)
 {
     if (_animator == null)
         return;
@@ -212,6 +224,8 @@ public void Jump() => EnsureState(AnimatorStateType.Jump);
         if (!(_hasSpeedParameter || _hasIsWalkParameter))
             EnsureState(AnimatorStateType.Idle);
     }
+
+    LogAnimatorSnapshot($"SetMoveSpeed:{clampedSpeed:F2}", false);
 }
 
         private void Update()
@@ -223,7 +237,10 @@ public void Jump() => EnsureState(AnimatorStateType.Jump);
             _currentBaseStateHash = info.shortNameHash;
 
             if (!_isAttackPlaying)
+            {
+                LogAnimatorSnapshot("Update", false);
                 return;
+            }
 
             if (IsAttackState(info.shortNameHash))
             {
@@ -234,6 +251,8 @@ public void Jump() => EnsureState(AnimatorStateType.Jump);
 
             if (Time.time >= _attackLockUntilTime)
                 _isAttackPlaying = false;
+
+            LogAnimatorSnapshot("Update:attack", false);
         }
 
         /// <summary>
@@ -338,6 +357,8 @@ else if (state == AnimatorStateType.Idle)
                 return;
             }
 
+            LogAnimatorSnapshot($"EnsureState:{state}", true);
+
             if (ShouldForceImmediateAnimatorUpdate(state))
                 _animator.Update(0f);
         }
@@ -365,6 +386,7 @@ else if (state == AnimatorStateType.Idle)
 
             _currentBaseStateHash = targetHash;
             LogAnimationStateChange($"State => {stateName}");
+            LogAnimatorSnapshot($"CrossFade:{stateName}", true);
             return true;
         }
 
@@ -554,6 +576,7 @@ else if (state == AnimatorStateType.Idle)
 
             float speed = Mathf.Abs(_animator.speed) < 0.0001f ? 1f : _animator.speed;
             _attackLockUntilTime = Time.time + Mathf.Max(0.15f, clipLen / speed);
+            LogAnimatorSnapshot("AttackStarted", true);
         }
 
                 private void CacheAnimatorParameters()
@@ -627,6 +650,58 @@ else if (state == AnimatorStateType.Idle)
             Debug.Log($"[UnitView] {name} {message}");
         }
 
+        public void LogAttackTriggerRequest(string source)
+        {
+            LogAnimationStateChange($"Attack trigger requested by {source}");
+            LogAnimatorSnapshot("AttackTriggerRequest", true);
+        }
+
+        private void LogLocomotionCall(string callName)
+        {
+            if (!_enableAnimationDiagnostics)
+                return;
+
+            if (Time.time < _nextLocomotionCallLogTime)
+                return;
+
+            _nextLocomotionCallLogTime = Time.time + Mathf.Max(0.05f, _locomotionCallLogInterval);
+            Debug.Log($"[AnimWho] frame={Time.frameCount} unit={name} call={callName}\n{new System.Diagnostics.StackTrace(2, true)}");
+        }
+
+        private void LogAnimatorSnapshot(string reason, bool force)
+        {
+            if (!_enableAnimationDiagnostics || _animator == null)
+                return;
+
+            var now = Time.time;
+            if (!force && now < _nextAnimationDiagnosticsTime)
+                return;
+
+            _nextAnimationDiagnosticsTime = now + Mathf.Max(0.05f, _animationDiagnosticsInterval);
+
+            var curInfo = _animator.GetCurrentAnimatorStateInfo(0);
+            var inTransition = _animator.IsInTransition(0);
+            AnimatorStateInfo nextInfo = inTransition ? _animator.GetNextAnimatorStateInfo(0) : new AnimatorStateInfo();
+            var curClips = _animator.GetCurrentAnimatorClipInfo(0);
+            var nextClips = inTransition ? _animator.GetNextAnimatorClipInfo(0) : null;
+            var curClip = (curClips != null && curClips.Length > 0 && curClips[0].clip != null) ? curClips[0].clip.name : "NONE";
+            var nextClip = (nextClips != null && nextClips.Length > 0 && nextClips[0].clip != null) ? nextClips[0].clip.name : "NONE";
+
+            float speedValue = _hasSpeedParameter ? _animator.GetFloat(Hash_Speed) : float.NaN;
+            string isWalkValue = _hasIsWalkParameter ? _animator.GetBool(Hash_IsWalk).ToString() : "N/A";
+            var ctrl = _animator.runtimeAnimatorController != null ? _animator.runtimeAnimatorController.name : "NULL";
+
+            Debug.Log(
+                $"[AnimDiag] unit={name} reason={reason} frame={Time.frameCount} inTrans={inTransition} " +
+                $"curHash={curInfo.shortNameHash} nextHash={(inTransition ? nextInfo.shortNameHash : 0)} " +
+                $"curNorm={curInfo.normalizedTime:F2} nextNorm={(inTransition ? nextInfo.normalizedTime : 0f):F2} " +
+                $"curClip={curClip} nextClip={nextClip} layerWeight={_animator.GetLayerWeight(0):F2} " +
+                $"speedParam({Hash_Speed})={(_hasSpeedParameter ? speedValue.ToString("F2") : "N/A")} isWalkParam({Hash_IsWalk})={isWalkValue} " +
+                $"hasSpeed={_hasSpeedParameter} hasIsWalk={_hasIsWalkParameter} ctrl={ctrl} " +
+                $"updateMode={_animator.updateMode} culling={_animator.cullingMode} atkPlaying={_isAttackPlaying} " +
+                $"atkNorm={CurrentAttackNormalizedTime:F2} atkLockUntil={_attackLockUntilTime:F2} now={now:F2}");
+        }
+
         // ----------------------------
         // Animator controller binding
         // ----------------------------
@@ -670,6 +745,7 @@ else if (state == AnimatorStateType.Idle)
             CacheAnimatorParameters();
             CacheAttackHashes();
             _currentBaseStateHash = _animator.GetCurrentAnimatorStateInfo(0).shortNameHash;
+            LogAnimatorSnapshot("ApplyAnimationOverride", true);
         }
 
         // ----------------------------
