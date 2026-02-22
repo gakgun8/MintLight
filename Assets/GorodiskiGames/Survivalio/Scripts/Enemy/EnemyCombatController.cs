@@ -1,11 +1,12 @@
 using Game.Unit;
+using UnityEngine;
 
 namespace Game.Enemy
 {
     /// <summary>
     /// Placeholder for enemy attack timing with the same AnimationEvent contract as player.
     /// </summary>
-    public sealed class EnemyCombatController : IAnimEventReceiver
+    public sealed class EnemyCombatController : MonoBehaviour, IAnimEventReceiver
     {
         public void OnFireAttackHit()
         {

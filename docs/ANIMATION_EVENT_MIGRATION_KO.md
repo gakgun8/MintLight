@@ -30,3 +30,8 @@
 - Locomotion은 `SetMoveSpeed`로만 갱신(Idle/Walk 강제 CrossFade 금지)
 - 공격 요청은 CombatController 한 곳에서만 `PlayAttack` 호출
 - 데미지는 반드시 `FireAttackHit` 이벤트에서만 적용
+
+
+## 컴포넌트 추가 안내
+- `PlayerCombatController` / `EnemyCombatController`는 `MonoBehaviour`이므로 필요하면 인스펙터에서 직접 붙일 수 있습니다.
+- 현재 코드는 누락 시 런타임에 자동으로 `AddComponent` 하도록 되어 있어 프리팹에 미리 안 붙어 있어도 동작합니다.

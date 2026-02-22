@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using System.Linq;
 using Game.Config;
@@ -13,13 +12,14 @@ namespace Game.Player
     /// Gameplay authority for attack request/hit timing.
     /// Animator is presentation-only; hit is applied only on FireAttackHit event.
     /// </summary>
-    public sealed class PlayerCombatController : IAnimEventReceiver
+    public sealed class PlayerCombatController : MonoBehaviour, IAnimEventReceiver
     {
-        private readonly PlayerView _view;
-        private readonly PlayerModel _model;
-        private readonly AutoCombatConfig _autoCombatConfig;
-        private readonly AttackConfig _defaultAttackConfig;
-        private readonly AttackConfig[] _comboConfigs;
+        [SerializeField] private PlayerView _view;
+
+        private PlayerModel _model;
+        private AutoCombatConfig _autoCombatConfig;
+        private AttackConfig _defaultAttackConfig;
+        private AttackConfig[] _comboConfigs;
 
         private readonly HashSet<EnemyController> _hitEnemiesInCurrentAttack = new HashSet<EnemyController>();
 
@@ -29,7 +29,7 @@ namespace Game.Player
         private int _comboIndex;
         private float _nextAttackTime;
 
-        public PlayerCombatController(PlayerView view, PlayerModel model, AutoCombatConfig autoCombatConfig, AttackConfig defaultAttackConfig)
+        public void Initialize(PlayerView view, PlayerModel model, AutoCombatConfig autoCombatConfig, AttackConfig defaultAttackConfig)
         {
             _view = view;
             _model = model;
@@ -38,11 +38,11 @@ namespace Game.Player
             _comboConfigs = _autoCombatConfig != null ? _autoCombatConfig.combo : null;
         }
 
-        public bool CanRequestAttack(float now) => now >= _nextAttackTime && !_view.IsAttackPlaying;
+        public bool CanRequestAttack(float now) => _view != null && now >= _nextAttackTime && !_view.IsAttackPlaying;
 
         public void RequestAttack(UnitController target, GameManager gameManager, float now)
         {
-            if (target == null)
+            if (_view == null || _model == null || target == null)
                 return;
 
             _pendingHitTarget = target;

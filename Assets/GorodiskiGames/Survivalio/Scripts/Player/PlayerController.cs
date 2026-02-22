@@ -196,7 +196,7 @@ namespace Game.Player
         private bool _hadTargetLastTick;
         private bool _isAutoMoving;
         private bool _comboResetByMovement;
-        private readonly PlayerCombatController _combatController;
+        private PlayerCombatController _combatController;
         private const float AutoMoveResumeDelay = 0.15f;
         private const float MovementDebugLogInterval = 0.35f;
         private const float ManualInputDeadzone = 0.1f;
@@ -247,7 +247,12 @@ namespace Game.Player
             Visibility(true);
             _view.SetCollider(true);
 
-            _combatController = new PlayerCombatController(_view, _model, _autoCombatConfig, _attackConfig);
+                        _combatController = _view.GetComponent<PlayerCombatController>();
+            if (_combatController == null)
+                _combatController = _view.gameObject.AddComponent<PlayerCombatController>();
+
+            _combatController.Initialize(_view, _model, _autoCombatConfig, _attackConfig);
+
             var relay = _view.GetComponentInChildren<AnimationEventsRelay>(true);
             if (relay != null) relay.RegisterReceiver(_combatController);
             _timer.TICK += OnTick;

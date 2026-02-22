@@ -93,7 +93,9 @@ namespace Game.Enemy
             _view.PlayEffect(true);
             _view.SetCollider(true);
 
-            _combatController = new EnemyCombatController();
+            _combatController = _view.GetComponent<EnemyCombatController>();
+            if (_combatController == null)
+                _combatController = _view.gameObject.AddComponent<EnemyCombatController>();
             var relay = _view.GetComponentInChildren<AnimationEventsRelay>(true);
             if (relay != null) relay.RegisterReceiver(_combatController);
         }
