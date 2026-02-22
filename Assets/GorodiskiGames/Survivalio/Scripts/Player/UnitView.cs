@@ -56,6 +56,7 @@ namespace Game.Unit
         private bool _hasSpeedParameter;
         private bool _hasIsWalkParameter;
         private float _moveAnimHoldUntil;
+        private float _nextStopDebugLogTime;
 
         public Vector3 Position
         {
@@ -164,13 +165,17 @@ namespace Game.Unit
             if (clampedSpeed > 0.01f)
             {
                 _moveAnimHoldUntil = Time.time + 0.12f; // 120ms 유지
-                EnsureState(AnimatorStateType.Walk);
+                if (!_hasSpeedParameter && !_hasIsWalkParameter)
+                    EnsureState(AnimatorStateType.Walk);
             }
             else
             {
                 // 공격 중에는 Idle로 강제 전환하지 않음
                 if (!_isAttackPlaying && Time.time > _moveAnimHoldUntil)
-                    EnsureState(AnimatorStateType.Idle);
+                {
+                    if (!_hasSpeedParameter && !_hasIsWalkParameter)
+                        EnsureState(AnimatorStateType.Idle);
+                }
             }
         }
 
@@ -181,6 +186,15 @@ namespace Game.Unit
 
             var info = _animator.GetCurrentAnimatorStateInfo(0);
             _currentBaseStateHash = info.shortNameHash;
+
+            if (Time.time >= _nextStopDebugLogTime)
+            {
+                _nextStopDebugLogTime = Time.time + 0.25f;
+                var speed = _hasSpeedParameter ? _animator.GetFloat(Hash_Speed) : 0f;
+                var isWalk = _hasIsWalkParameter && _animator.GetBool(Hash_IsWalk);
+                if (speed <= 0.01f && !isWalk)
+                    Debug.Log($"[UnitView][StopDebug] {name} Speed={speed:F3} StateHash={info.shortNameHash} IsWalk={(_hasIsWalkParameter ? isWalk.ToString() : "N/A")}");
+            }
 
             if (!_isAttackPlaying)
                 return;
@@ -205,6 +219,12 @@ namespace Game.Unit
         {
             if (_animator == null)
                 return;
+
+            if ((state == AnimatorStateType.Walk || state == AnimatorStateType.Idle) && (_hasSpeedParameter || _hasIsWalkParameter))
+            {
+                _currentBaseStateHash = _animator.GetCurrentAnimatorStateInfo(0).shortNameHash;
+                return;
+            }
 
             int hash = Animator.StringToHash(state.ToString());
             var info = _animator.GetCurrentAnimatorStateInfo(0);

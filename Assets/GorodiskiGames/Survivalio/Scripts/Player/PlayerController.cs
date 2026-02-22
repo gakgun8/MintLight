@@ -495,9 +495,7 @@ namespace Game.Player
 
         private void StopAutoMovement(bool keepManualAnim = false)
         {
-            if (!_isAutoMoving)
-                return;
-
+            var wasAutoMoving = _isAutoMoving;
             _isAutoMoving = false;
 
             if (!keepManualAnim)
@@ -507,7 +505,8 @@ namespace Game.Player
                     _view.Idle();
             }
 
-            LogCombat("Auto approach stopped.");
+            if (wasAutoMoving)
+                LogCombat("Auto approach stopped.");
         }
 
         public void ReportManualInput(Vector2 inputDirection)
