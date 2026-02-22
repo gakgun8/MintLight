@@ -289,7 +289,11 @@ namespace Game.Player
 
             if (isManualNow)
             {
+                _currentTarget = null;
+                ResetComboChain();
                 StopAutoMovement(keepManualAnim: true);
+                _view.Walk();
+                hasTarget = false;
                 LogMovementState(hasManualInput, hasTarget, autoCombatRunning, didRotateToTarget, deltaPos, speed);
                 return;
             }
@@ -310,14 +314,7 @@ namespace Game.Player
             {
                 StopAutoMovement();
                 ResetComboChain();
-
-                if (!hasManualInput)
-                {
-                    if (!_view.IsAttackPlaying || _view.CurrentAttackNormalizedTime >= 0.98f)
-                        _view.Idle();
-
-                    _view.SetMoveSpeed(0f);
-                }
+                EnsureIdleWhenStopped(hasManualInput, speed);
 
                 _hadTargetLastTick = false;
                 LogMovementState(hasManualInput, hasTarget, autoCombatRunning, didRotateToTarget, deltaPos, speed);
@@ -509,6 +506,21 @@ namespace Game.Player
                 LogCombat("Auto approach stopped.");
         }
 
+        private void EnsureIdleWhenStopped(bool hasManualInput, float speed)
+        {
+            if (hasManualInput)
+                return;
+
+            _view.SetMoveSpeed(0f);
+
+            var isStopped = speed <= 0.05f && !_isAutoMoving;
+            if (!isStopped)
+                return;
+
+            if (!_view.IsAttackPlaying || _view.CurrentAttackNormalizedTime >= 0.98f)
+                _view.Idle();
+        }
+
         public void ReportManualInput(Vector2 inputDirection)
         {
             _manualInputMagnitude = inputDirection.magnitude;
@@ -557,6 +569,12 @@ namespace Game.Player
             var nextConfig = GetAttackConfigForCombo(nextComboIndex);
             var cooldownSource = nextConfig != null ? nextConfig : _attackConfig;
             var cooldown = cooldownSource != null ? Mathf.Max(0.01f, cooldownSource.attackCooldown) : 0.5f;
+
+            // 콤보 진행 중에는 애니메이션 락(IsAttackPlaying)이 간격을 제어하므로,
+            // config 쿨다운이 커도 콤보가 끊겨 보이지 않도록 쿨다운을 최소화한다.
+            if (_comboIndex > 0)
+                cooldown = Mathf.Min(cooldown, 0.05f);
+
             _lastAttackRequestTime = currentTime;
             _nextAttackTime = currentTime + cooldown;
 
