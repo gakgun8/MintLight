@@ -349,18 +349,11 @@ namespace Game.Player
             _comboResetByMovement = false;
             StopAutoMovement();
 
-            // ✅ If we are still physically moving (residual velocity / last frame delta),
-            // do NOT start an attack this tick. Let locomotion settle first.
-            if (speed > 0.05f)
-            {
-                var norm = _model.WalkSpeed > 0.01f ? Mathf.Clamp01(speed / _model.WalkSpeed) : 1f;
-                _view.SetMoveSpeed(norm);
-                _view.Walk();
-                LogMovementState(hasManualInput, hasTarget, autoCombatRunning, didRotateToTarget, deltaPos, speed);
-                return;
-            }
-
-            TryAttack(currentTime, speed);
+            // IMPORTANT:
+            // If target is already inside attack range, prioritize chaining attack immediately.
+            // Forcing one more Walk tick here causes Attack_01 re-entry patterns and combo starvation.
+            _view.SetMoveSpeed(0f);
+            TryAttack(currentTime, 0f);
             LogMovementState(hasManualInput, hasTarget, autoCombatRunning, didRotateToTarget, deltaPos, speed);
         }
 
