@@ -202,15 +202,19 @@ namespace Game.Player
         private AttackConfig _currentAttackConfig;
         private readonly HashSet<EnemyController> _hitEnemiesInCurrentAttack = new HashSet<EnemyController>();
         private const float AutoMoveResumeDelay = 0.15f;
+        private const float ManualInputGraceDuration = 0.10f;
         private const float MovementDebugLogInterval = 0.35f;
-        private const float ManualInputDeadzone = 0.1f;
+        private const float ManualInputPressDeadzone = 0.12f;
+        private const float ManualInputReleaseDeadzone = 0.08f;
         private float _manualInputMagnitude;
         private bool _hasManualInput;
         private float _lastManualInputTime = -999f;
+        private float _lastAttackRequestTime = -999f;
         private float _nextMovementDebugLogTime;
         private Vector3 _lastTickPosition;
 
         public bool HasManualInput => _hasManualInput;
+        public float LastAttackRequestTime => _lastAttackRequestTime;
 
         public PlayerController(PlayerView view, PlayerModel model, Context context) : base(view)
         {
@@ -276,14 +280,15 @@ namespace Game.Player
             var speed = deltaPos.magnitude / deltaTime;
             _lastTickPosition = currentPosition;
 
-            var hasManualInput = _hasManualInput || (currentTime - _lastManualInputTime) < 0.10f;
+            var isManualNow = _hasManualInput;
+            var manualLock = (currentTime - _lastManualInputTime) < ManualInputGraceDuration;
+            var hasManualInput = isManualNow || manualLock;
             var hasTarget = _currentTarget != null;
             var didRotateToTarget = false;
             var autoCombatRunning = false;
 
-            if (hasManualInput)
+            if (isManualNow)
             {
-                _lastManualInputTime = currentTime;
                 StopAutoMovement(keepManualAnim: true);
                 LogMovementState(hasManualInput, hasTarget, autoCombatRunning, didRotateToTarget, deltaPos, speed);
                 return;
@@ -296,7 +301,7 @@ namespace Game.Player
             }
 
             hasTarget = _currentTarget != null;
-            var canResumeAutoMove = !hasManualInput && (currentTime - _lastManualInputTime) >= AutoMoveResumeDelay;
+            var canResumeAutoMove = !manualLock && (currentTime - _lastManualInputTime) >= AutoMoveResumeDelay;
             var autoMoveEligible = hasTarget && !_view.IsAttackPlaying;
             var allowAutoMove = autoMoveEligible && canResumeAutoMove;
             autoCombatRunning = hasTarget;
@@ -326,8 +331,11 @@ namespace Game.Player
             var stopDistance = Mathf.Max(0.1f, _autoCombatConfig.stopDistance);
             var desiredRange = Mathf.Max(stopDistance, attackRange * 0.95f);
             var distance = Vector3.Distance(_view.Position, targetPosition);
-            RotateToTarget(targetPosition);
-            didRotateToTarget = true;
+            if (!manualLock)
+            {
+                RotateToTarget(targetPosition);
+                didRotateToTarget = true;
+            }
 
             if (!allowAutoMove)
             {
@@ -505,7 +513,15 @@ namespace Game.Player
         public void ReportManualInput(Vector2 inputDirection)
         {
             _manualInputMagnitude = inputDirection.magnitude;
-            _hasManualInput = _manualInputMagnitude > ManualInputDeadzone;
+
+            // Deadzone jitter로 인한 manual 상태 플리커/고착을 줄이기 위해 히스테리시스를 사용한다.
+            var pressThreshold = ManualInputPressDeadzone;
+            var releaseThreshold = Mathf.Min(pressThreshold, ManualInputReleaseDeadzone);
+
+            if (_hasManualInput)
+                _hasManualInput = _manualInputMagnitude > releaseThreshold;
+            else
+                _hasManualInput = _manualInputMagnitude > pressThreshold;
 
             if (_hasManualInput)
                 _lastManualInputTime = _timer.Time;
@@ -542,6 +558,7 @@ namespace Game.Player
             var nextConfig = GetAttackConfigForCombo(nextComboIndex);
             var cooldownSource = nextConfig != null ? nextConfig : _attackConfig;
             var cooldown = cooldownSource != null ? Mathf.Max(0.01f, cooldownSource.attackCooldown) : 0.5f;
+            _lastAttackRequestTime = currentTime;
             _nextAttackTime = currentTime + cooldown;
 
             StartAttackCombo(_currentTarget, _gameManager);
