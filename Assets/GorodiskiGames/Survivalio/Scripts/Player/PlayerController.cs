@@ -203,10 +203,14 @@ namespace Game.Player
         private readonly HashSet<EnemyController> _hitEnemiesInCurrentAttack = new HashSet<EnemyController>();
         private const float AutoMoveResumeDelay = 0.15f;
         private const float MovementDebugLogInterval = 0.35f;
+        private const float ManualInputDeadzone = 0.1f;
         private float _manualInputMagnitude;
-        private Vector3 _manualMoveDirection;
+        private bool _hasManualInput;
         private float _lastManualInputTime = -999f;
         private float _nextMovementDebugLogTime;
+        private Vector3 _lastTickPosition;
+
+        public bool HasManualInput => _hasManualInput;
 
         public PlayerController(PlayerView view, PlayerModel model, Context context) : base(view)
         {
@@ -247,6 +251,8 @@ namespace Game.Player
             _view.ON_ATTACK_HIT += OnAttackHit;
             _view.ON_ATTACK_DASH += OnAttackDash;
             _timer.TICK += OnTick;
+
+            _lastTickPosition = _view.Position;
         }
 
         public void Dispose()
@@ -264,6 +270,23 @@ namespace Game.Player
                 return;
 
             var currentTime = _timer.Time;
+            var currentPosition = _view.Position;
+            var deltaPos = currentPosition - _lastTickPosition;
+            var deltaTime = Mathf.Max(0.0001f, Time.deltaTime);
+            var speed = deltaPos.magnitude / deltaTime;
+            _lastTickPosition = currentPosition;
+
+            var hasManualInput = _hasManualInput;
+            var hasTarget = _currentTarget != null;
+            var didRotateToTarget = false;
+            var autoCombatRunning = false;
+
+            if (hasManualInput)
+            {
+                StopAutoMovement();
+                LogMovementState(hasManualInput, hasTarget, autoCombatRunning, didRotateToTarget, deltaPos, speed);
+                return;
+            }
 
             if (currentTime >= _nextScanTime)
             {
@@ -271,11 +294,11 @@ namespace Game.Player
                 _nextScanTime = currentTime + Mathf.Max(0.05f, _autoCombatConfig.targetScanInterval);
             }
 
-            var hasManualInput = _manualInputMagnitude > 0.001f;
-            var hasTarget = _currentTarget != null;
+            hasTarget = _currentTarget != null;
             var canResumeAutoMove = !hasManualInput && (currentTime - _lastManualInputTime) >= AutoMoveResumeDelay;
             var autoMoveEligible = hasTarget && !_view.IsAttackPlaying;
             var allowAutoMove = autoMoveEligible && canResumeAutoMove;
+            autoCombatRunning = hasTarget;
 
             if (!hasTarget)
             {
@@ -291,7 +314,7 @@ namespace Game.Player
                 }
 
                 _hadTargetLastTick = false;
-                LogMovementState(hasManualInput, hasTarget, allowAutoMove, Vector3.zero, Vector3.zero);
+                LogMovementState(hasManualInput, hasTarget, autoCombatRunning, didRotateToTarget, deltaPos, speed);
                 return;
             }
 
@@ -302,21 +325,13 @@ namespace Game.Player
             var stopDistance = Mathf.Max(0.1f, _autoCombatConfig.stopDistance);
             var desiredRange = Mathf.Max(stopDistance, attackRange * 0.95f);
             var distance = Vector3.Distance(_view.Position, targetPosition);
-            var toTarget = targetPosition - _view.Position;
-            toTarget.y = 0f;
-            var autoDir = toTarget.sqrMagnitude > 0.0001f ? toTarget.normalized : Vector3.zero;
-            var finalMoveDir = hasManualInput ? _manualMoveDirection : (allowAutoMove ? autoDir : Vector3.zero);
-
-            LogMovementState(hasManualInput, hasTarget, allowAutoMove, autoDir, finalMoveDir);
-
-            if (hasManualInput && autoMoveEligible)
-                Debug.LogWarning("[PlayerMove] Manual input is active but auto-move eligibility remained true. Auto movement override will be enforced.");
-
             RotateToTarget(targetPosition);
+            didRotateToTarget = true;
 
             if (!allowAutoMove)
             {
                 StopAutoMovement();
+                LogMovementState(hasManualInput, hasTarget, autoCombatRunning, didRotateToTarget, deltaPos, speed);
                 return;
             }
 
@@ -324,6 +339,7 @@ namespace Game.Player
             if (distance > attackRange)
             {
                 HandleApproach(targetPosition, desiredRange);
+                LogMovementState(hasManualInput, hasTarget, autoCombatRunning, didRotateToTarget, deltaPos, speed);
                 return;
             }
 
@@ -338,10 +354,13 @@ namespace Game.Player
                     LogCombat($"Attack skipped - cooldown. remaining={remain:F2}s");
                     _lastCooldownLogTime = currentTime;
                 }
+
+                LogMovementState(hasManualInput, hasTarget, autoCombatRunning, didRotateToTarget, deltaPos, speed);
                 return;
             }
 
             TryAttack(currentTime);
+            LogMovementState(hasManualInput, hasTarget, autoCombatRunning, didRotateToTarget, deltaPos, speed);
         }
 
         private void RefreshTarget()
@@ -445,9 +464,12 @@ namespace Game.Player
 
             var direction = toTarget.normalized;
             var moveSpeed = Mathf.Max(0.1f, _model.WalkSpeed * Mathf.Max(0.1f, _autoCombatConfig.approachSpeedMultiplier));
+            var beforePosition = _view.Position;
             _view.Position += direction * moveSpeed * Time.deltaTime;
+            var movedDistance = Vector3.Distance(beforePosition, _view.Position);
+            var normalizedSpeed = movedDistance / Mathf.Max(0.0001f, _model.WalkSpeed * Time.deltaTime);
 
-            _view.SetMoveSpeed(1f);
+            _view.SetMoveSpeed(normalizedSpeed);
             _view.Walk();
             if (!_comboResetByMovement)
             {
@@ -478,21 +500,23 @@ namespace Game.Player
         public void ReportManualInput(Vector2 inputDirection)
         {
             _manualInputMagnitude = inputDirection.magnitude;
-            _manualMoveDirection = new Vector3(inputDirection.x, 0f, inputDirection.y);
+            _hasManualInput = _manualInputMagnitude > ManualInputDeadzone;
 
-            if (_manualInputMagnitude > 0.001f)
+            if (_hasManualInput)
                 _lastManualInputTime = _timer.Time;
         }
 
-        private void LogMovementState(bool hasManualInput, bool hasTarget, bool allowAutoMove, Vector3 autoDir, Vector3 finalMoveDir)
+        private void LogMovementState(bool hasManualInput, bool hasTarget, bool autoCombatRunning, bool didRotateToTarget, Vector3 deltaPos, float speed)
         {
             if (_timer.Time < _nextMovementDebugLogTime)
                 return;
 
             _nextMovementDebugLogTime = _timer.Time + MovementDebugLogInterval;
-            var speed = finalMoveDir.magnitude * _model.WalkSpeed;
-            Debug.Log($"[PlayerMove] hasManualInput={hasManualInput} inputMag={_manualInputMagnitude:F3} allowAutoMove={allowAutoMove} hasTarget={hasTarget} " +
-                      $"manualDir={_manualMoveDirection} autoDir={autoDir} finalMoveDir={finalMoveDir} speed={speed:F3}");
+            Debug.Log($"[PlayerMove] hasManualInput={hasManualInput} inputMag={_manualInputMagnitude:F3} hasTarget={hasTarget} " +
+                      $"autoCombatRunning={autoCombatRunning} didRotateToTarget={didRotateToTarget} deltaPos={deltaPos} speed={speed:F3}");
+
+            if (hasManualInput && didRotateToTarget)
+                Debug.LogWarning("[PlayerMove] hasManualInput=true 인데 RotateToTarget가 호출되었습니다. 자동 회전 경합을 확인하세요.");
         }
 
         private void TryAttack(float currentTime)

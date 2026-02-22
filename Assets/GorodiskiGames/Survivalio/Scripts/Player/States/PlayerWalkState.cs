@@ -79,7 +79,6 @@ namespace Game.Player.States
 
             _inputDirection = _inputDirection.normalized;
             _player.ReportManualInput(_inputDirection);
-            _player.View.SetMoveSpeed(_inputDirection.magnitude);
         }
 
         private void HandleMovement()
@@ -87,7 +86,11 @@ namespace Game.Player.States
             var beforePosition = _player.View.Position;
             _moveDirection = new Vector3(_inputDirection.x, 0, _inputDirection.y);
             _player.View.Position += _moveDirection * _walkSpeed * Time.deltaTime;
-            DebugMoveTrace(beforePosition, _player.View.Position);
+            var afterPosition = _player.View.Position;
+            var movedDistance = Vector3.Distance(beforePosition, afterPosition);
+            var normalizedSpeed = movedDistance / Mathf.Max(0.0001f, _walkSpeed * Time.deltaTime);
+            _player.View.SetMoveSpeed(normalizedSpeed);
+            DebugMoveTrace(beforePosition, afterPosition);
         }
 
         private void DebugMoveTrace(Vector3 beforePosition, Vector3 afterPosition)
