@@ -562,9 +562,17 @@ namespace Game.Unit
         {
             _hasSpeedParameter = false;
             _hasIsWalkParameter = false;
-            for (int i = 0; i < _animator.parameterCount; i++)
+
+            if (_animator == null)
+                return;
+
+            var parameters = _animator.parameters;
+            if (parameters == null || parameters.Length == 0)
+                return;
+
+            for (int i = 0; i < parameters.Length; i++)
             {
-                var parameter = _animator.GetParameter(i);
+                var parameter = parameters[i];
                 if (parameter.type == AnimatorControllerParameterType.Float && parameter.nameHash == Hash_Speed)
                 {
                     _hasSpeedParameter = true;
@@ -649,7 +657,17 @@ namespace Game.Unit
 
             // RuntimeAnimatorController가 바뀌면 파라미터/상태 캐시를 다시 잡아야 한다.
             // (초기 Awake()에서 캐시한 Speed 유무가 오래된 값이면 이동 애니메이션이 갱신되지 않을 수 있음)
-            CacheAnimatorParameters();
+            try
+            {
+                CacheAnimatorParameters();
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogWarning($"[UnitView] {name} Failed to cache animator parameters: {ex.Message}");
+                _hasSpeedParameter = false;
+                _hasIsWalkParameter = false;
+            }
+
             CacheAttackHashes();
             _currentBaseStateHash = _animator.GetCurrentAnimatorStateInfo(0).shortNameHash;
         }
