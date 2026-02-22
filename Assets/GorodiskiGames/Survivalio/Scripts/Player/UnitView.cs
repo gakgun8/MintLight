@@ -47,12 +47,14 @@ namespace Game.Unit
         private Coroutine _attackMoveCoroutine;
         private static readonly int BlinkAmountShaderProperty = Shader.PropertyToID("_BlinkAmount");
         private static readonly int Hash_Speed = Animator.StringToHash("Speed");
+        private static readonly int Hash_IsWalk = Animator.StringToHash("IsWalk");
 
         private readonly List<int> _attackStateHashes = new List<int>(8);
         private int _currentBaseStateHash;
         private bool _isAttackPlaying;
         private float _attackLockUntilTime;
         private bool _hasSpeedParameter;
+        private bool _hasIsWalkParameter;
         private float _moveAnimHoldUntil;
 
         public Vector3 Position
@@ -156,6 +158,9 @@ namespace Game.Unit
             if (_hasSpeedParameter)
                 _animator.SetFloat(Hash_Speed, clampedSpeed);
 
+            if (_hasIsWalkParameter)
+                _animator.SetBool(Hash_IsWalk, clampedSpeed > 0.01f);
+
             if (clampedSpeed > 0.01f)
             {
                 _moveAnimHoldUntil = Time.time + 0.12f; // 120ms 유지
@@ -217,7 +222,7 @@ namespace Game.Unit
                 if (_hasSpeedParameter)
                 {
                     float s = _animator.GetFloat(Hash_Speed);
-                    if (s > 0.01f) // 이동 중
+                    if (s > 0.01f && Time.time <= _moveAnimHoldUntil) // 이동 중(짧은 홀드 시간 내)
                         return;
                 }
                 else
@@ -230,7 +235,19 @@ namespace Game.Unit
                 }
             }
             if (state == AnimatorStateType.Walk)
+            {
                 _isAttackPlaying = false;
+                if (_hasIsWalkParameter)
+                    _animator.SetBool(Hash_IsWalk, true);
+            }
+            else if (state == AnimatorStateType.Idle)
+            {
+                if (_hasSpeedParameter)
+                    _animator.SetFloat(Hash_Speed, 0f);
+
+                if (_hasIsWalkParameter)
+                    _animator.SetBool(Hash_IsWalk, false);
+            }
 
             bool isSameState = info.shortNameHash == hash || _currentBaseStateHash == hash;
             if (isSameState && float.IsNegativeInfinity(normalizedTime))
@@ -240,6 +257,8 @@ namespace Game.Unit
             {
                 if (state == AnimatorStateType.Walk)
                     LogAnimationStateChange("Walk state not found. Speed-only locomotion fallback.");
+                else if (state == AnimatorStateType.Idle)
+                    LogAnimationStateChange("Idle state not found. Parameter-driven locomotion fallback.");
                 return;
             }
 
@@ -286,9 +305,18 @@ namespace Game.Unit
             _animator.CrossFadeInFixedTime(targetHash, 0.08f, 0,
                 float.IsNegativeInfinity(normalizedTime) ? 0f : normalizedTime);
 
-            _currentBaseStateHash = targetHash;
+            _currentBaseStateHash = Animator.StringToHash(GetShortStateName(targetStateName));
             LogAnimationStateChange($"State => {targetStateName} (requested:{state})");
             return true;
+        }
+
+        private static string GetShortStateName(string stateName)
+        {
+            if (string.IsNullOrEmpty(stateName))
+                return string.Empty;
+
+            int lastDot = stateName.LastIndexOf('.');
+            return lastDot >= 0 && lastDot + 1 < stateName.Length ? stateName.Substring(lastDot + 1) : stateName;
         }
 
         private string[] BuildStateCandidates(AnimatorStateType state)
@@ -513,14 +541,21 @@ namespace Game.Unit
         private void CacheAnimatorParameters()
         {
             _hasSpeedParameter = false;
+            _hasIsWalkParameter = false;
             for (int i = 0; i < _animator.parameterCount; i++)
             {
                 var parameter = _animator.GetParameter(i);
                 if (parameter.type == AnimatorControllerParameterType.Float && parameter.nameHash == Hash_Speed)
                 {
                     _hasSpeedParameter = true;
-                    break;
+                    continue;
                 }
+
+                if (parameter.type == AnimatorControllerParameterType.Bool && parameter.nameHash == Hash_IsWalk)
+                    _hasIsWalkParameter = true;
+
+                if (_hasSpeedParameter && _hasIsWalkParameter)
+                    break;
             }
         }
 
