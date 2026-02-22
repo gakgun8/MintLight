@@ -26,7 +26,7 @@ namespace Game.Player
         private UnitController _pendingHitTarget;
         private GameManager _pendingHitGameManager;
         private AttackConfig _currentAttackConfig;
-        private int _comboIndex;
+        private int _comboIndex = -1;
         private float _nextAttackTime;
 
         public void Initialize(PlayerView view, PlayerModel model, AutoCombatConfig autoCombatConfig, AttackConfig defaultAttackConfig)
@@ -48,7 +48,7 @@ namespace Game.Player
             _pendingHitTarget = target;
             _pendingHitGameManager = gameManager;
 
-            _comboIndex = (_comboIndex % 3) + 1;
+            _comboIndex = (_comboIndex + 1) % 3;
             _currentAttackConfig = GetAttackConfigForCombo(_comboIndex);
             _hitEnemiesInCurrentAttack.Clear();
 
@@ -61,7 +61,7 @@ namespace Game.Player
 
         public void ResetCombo()
         {
-            _comboIndex = 0;
+            _comboIndex = -1;
             _currentAttackConfig = null;
             _pendingHitTarget = null;
             _pendingHitGameManager = null;
@@ -108,7 +108,7 @@ namespace Game.Player
             if (_comboConfigs == null || _comboConfigs.Length == 0)
                 return null;
 
-            var idx = comboIndex - 1;
+            var idx = comboIndex;
             return idx >= 0 && idx < _comboConfigs.Length ? _comboConfigs[idx] : null;
         }
 

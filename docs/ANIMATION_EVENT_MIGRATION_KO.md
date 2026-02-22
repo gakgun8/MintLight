@@ -24,6 +24,7 @@
    - `int AttackIndex`
    - `Trigger AttackTrigger`
    - `float Speed`
+   - 기본 구현은 `AttackIndex`를 `0/1/2`로 사용합니다. (필요 시 `UnitAnimatorDriver`의 min/max로 조정)
 4. Any State -> Attack 전이가 과도하면 재진입 조건을 강화해 연속 덮어쓰기 방지
 
 ## 적용 체크

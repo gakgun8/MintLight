@@ -17,6 +17,8 @@ namespace Game.Unit
 
         [SerializeField] private Animator _animator;
         [SerializeField] private bool _forceUpdateOnDie = true;
+        [SerializeField] private int _attackIndexMin = 0;
+        [SerializeField] private int _attackIndexMax = 2;
 
         private readonly List<int> _attackStateHashes = new List<int>(8);
 
@@ -64,7 +66,9 @@ namespace Game.Unit
             if (IsAttackPlaying && CurrentAttackNormalizedTime < 0.9f)
                 return;
 
-            _animator.SetInteger(AttackIndexHash, Mathf.Clamp(attackIndex, 1, 3));
+            var min = Mathf.Min(_attackIndexMin, _attackIndexMax);
+            var max = Mathf.Max(_attackIndexMin, _attackIndexMax);
+            _animator.SetInteger(AttackIndexHash, Mathf.Clamp(attackIndex, min, max));
             _animator.ResetTrigger(AttackTriggerHash);
             _animator.SetTrigger(AttackTriggerHash);
         }

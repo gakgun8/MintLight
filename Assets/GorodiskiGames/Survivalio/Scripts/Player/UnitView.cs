@@ -357,7 +357,7 @@ else if (state == AnimatorStateType.Idle)
         /// </summary>
         public void PlayAttackCombo(int comboIndex)
         {
-            comboIndex = Mathf.Clamp(comboIndex, 1, 3);
+            comboIndex = Mathf.Clamp(comboIndex, 0, 2);
 
             if (_animatorDriver != null)
                 _animatorDriver.PlayAttack(comboIndex);
@@ -379,11 +379,11 @@ else if (state == AnimatorStateType.Idle)
                 return;
 
             // 1) Trigger parameter first
-            var comboIndex = 1;
+            var comboIndex = 0;
             if (!string.IsNullOrEmpty(cfg.id))
             {
-                if (cfg.id.Contains("02")) comboIndex = 2;
-                else if (cfg.id.Contains("03")) comboIndex = 3;
+                if (cfg.id.Contains("02")) comboIndex = 1;
+                else if (cfg.id.Contains("03")) comboIndex = 2;
             }
 
             PlayAttackCombo(comboIndex);
