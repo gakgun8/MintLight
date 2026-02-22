@@ -191,6 +191,7 @@ namespace Game.Player
         private EnemyController _currentTarget;
         private float _nextScanTime;
         private float _nextAttackTime;
+        private float _lastAttackRequestTime = -999f;
         private float _lastCooldownLogTime = -999f;
         private int _comboIndex;
         private float _lastAttackTime = -999f;
@@ -202,14 +203,11 @@ namespace Game.Player
         private AttackConfig _currentAttackConfig;
         private readonly HashSet<EnemyController> _hitEnemiesInCurrentAttack = new HashSet<EnemyController>();
         private const float AutoMoveResumeDelay = 0.15f;
-        private const float ManualInputGraceDuration = 0.10f;
         private const float MovementDebugLogInterval = 0.35f;
-        private const float ManualInputPressDeadzone = 0.12f;
-        private const float ManualInputReleaseDeadzone = 0.08f;
+        private const float ManualInputDeadzone = 0.1f;
         private float _manualInputMagnitude;
         private bool _hasManualInput;
         private float _lastManualInputTime = -999f;
-        private float _lastAttackRequestTime = -999f;
         private float _nextMovementDebugLogTime;
         private Vector3 _lastTickPosition;
 
@@ -280,20 +278,14 @@ namespace Game.Player
             var speed = deltaPos.magnitude / deltaTime;
             _lastTickPosition = currentPosition;
 
-            var isManualNow = _hasManualInput;
-            var manualLock = (currentTime - _lastManualInputTime) < ManualInputGraceDuration;
-            var hasManualInput = isManualNow || manualLock;
+            var hasManualInput = _hasManualInput;
             var hasTarget = _currentTarget != null;
             var didRotateToTarget = false;
             var autoCombatRunning = false;
 
-            if (isManualNow)
+            if (hasManualInput)
             {
-                _currentTarget = null;
-                ResetComboChain();
-                StopAutoMovement(keepManualAnim: true);
-                _view.Walk();
-                hasTarget = false;
+                StopAutoMovement();
                 LogMovementState(hasManualInput, hasTarget, autoCombatRunning, didRotateToTarget, deltaPos, speed);
                 return;
             }
@@ -305,7 +297,7 @@ namespace Game.Player
             }
 
             hasTarget = _currentTarget != null;
-            var canResumeAutoMove = !manualLock && (currentTime - _lastManualInputTime) >= AutoMoveResumeDelay;
+            var canResumeAutoMove = !hasManualInput && (currentTime - _lastManualInputTime) >= AutoMoveResumeDelay;
             var autoMoveEligible = hasTarget && !_view.IsAttackPlaying;
             var allowAutoMove = autoMoveEligible && canResumeAutoMove;
             autoCombatRunning = hasTarget;
@@ -314,7 +306,14 @@ namespace Game.Player
             {
                 StopAutoMovement();
                 ResetComboChain();
-                EnsureIdleWhenStopped(hasManualInput, speed);
+
+                if (!hasManualInput)
+                {
+                    if (!_view.IsAttackPlaying || _view.CurrentAttackNormalizedTime >= 0.98f)
+                        _view.Idle();
+
+                    _view.SetMoveSpeed(0f);
+                }
 
                 _hadTargetLastTick = false;
                 LogMovementState(hasManualInput, hasTarget, autoCombatRunning, didRotateToTarget, deltaPos, speed);
@@ -328,11 +327,8 @@ namespace Game.Player
             var stopDistance = Mathf.Max(0.1f, _autoCombatConfig.stopDistance);
             var desiredRange = Mathf.Max(stopDistance, attackRange * 0.95f);
             var distance = Vector3.Distance(_view.Position, targetPosition);
-            if (!manualLock)
-            {
-                RotateToTarget(targetPosition);
-                didRotateToTarget = true;
-            }
+            RotateToTarget(targetPosition);
+            didRotateToTarget = true;
 
             if (!allowAutoMove)
             {
@@ -352,6 +348,17 @@ namespace Game.Player
             _comboResetByMovement = false;
             StopAutoMovement();
 
+            // ✅ If we are still physically moving (residual velocity / last frame delta),
+            // do NOT start an attack this tick. Let locomotion settle first.
+            if (speed > 0.05f)
+            {
+                var norm = _model.WalkSpeed > 0.01f ? Mathf.Clamp01(speed / _model.WalkSpeed) : 1f;
+                _view.SetMoveSpeed(norm);
+                _view.Walk();
+                LogMovementState(hasManualInput, hasTarget, autoCombatRunning, didRotateToTarget, deltaPos, speed);
+                return;
+            }
+
             if (currentTime < _nextAttackTime)
             {
                 if (currentTime - _lastCooldownLogTime >= 0.25f)
@@ -365,7 +372,7 @@ namespace Game.Player
                 return;
             }
 
-            TryAttack(currentTime);
+            TryAttack(currentTime, speed);
             LogMovementState(hasManualInput, hasTarget, autoCombatRunning, didRotateToTarget, deltaPos, speed);
         }
 
@@ -490,49 +497,23 @@ namespace Game.Player
             }
         }
 
-        private void StopAutoMovement(bool keepManualAnim = false)
+        private void StopAutoMovement()
         {
-            var wasAutoMoving = _isAutoMoving;
+            if (!_isAutoMoving)
+                return;
+
             _isAutoMoving = false;
-
-            if (!keepManualAnim)
-            {
-                _view.SetMoveSpeed(0f);
-                if (!_view.IsAttackPlaying)
-                    _view.Idle();
-            }
-
-            if (wasAutoMoving)
-                LogCombat("Auto approach stopped.");
-        }
-
-        private void EnsureIdleWhenStopped(bool hasManualInput, float speed)
-        {
-            if (hasManualInput)
-                return;
-
             _view.SetMoveSpeed(0f);
-
-            var isStopped = speed <= 0.05f && !_isAutoMoving;
-            if (!isStopped)
-                return;
-
-            if (!_view.IsAttackPlaying || _view.CurrentAttackNormalizedTime >= 0.98f)
+            if (!_view.IsAttackPlaying)
                 _view.Idle();
+
+            LogCombat("Auto approach stopped.");
         }
 
         public void ReportManualInput(Vector2 inputDirection)
         {
             _manualInputMagnitude = inputDirection.magnitude;
-
-            // Deadzone jitter로 인한 manual 상태 플리커/고착을 줄이기 위해 히스테리시스를 사용한다.
-            var pressThreshold = ManualInputPressDeadzone;
-            var releaseThreshold = Mathf.Min(pressThreshold, ManualInputReleaseDeadzone);
-
-            if (_hasManualInput)
-                _hasManualInput = _manualInputMagnitude > releaseThreshold;
-            else
-                _hasManualInput = _manualInputMagnitude > pressThreshold;
+            _hasManualInput = _manualInputMagnitude > ManualInputDeadzone;
 
             if (_hasManualInput)
                 _lastManualInputTime = _timer.Time;
@@ -551,7 +532,7 @@ namespace Game.Player
                 Debug.LogWarning("[PlayerMove] hasManualInput=true 인데 RotateToTarget가 호출되었습니다. 자동 회전 경합을 확인하세요.");
         }
 
-        private void TryAttack(float currentTime)
+        private void TryAttack(float currentTime, float currentSpeed)
         {
             if (_currentTarget == null)
             {
@@ -559,7 +540,14 @@ namespace Game.Player
                 return;
             }
 
-            if (_view.IsAttackPlaying && _view.CurrentAttackNormalizedTime < 0.9f)
+            
+            // ✅ Never request attacks while moving (prevents Animator transition churn: Walk <-> Attack).
+            if (currentSpeed > 0.05f || _isAutoMoving || _hasManualInput)
+            {
+                LogCombat($"Attack skipped - moving. speed={currentSpeed:F2} autoMove={_isAutoMoving} manual={_hasManualInput}");
+                return;
+            }
+if (_view.IsAttackPlaying && _view.CurrentAttackNormalizedTime < 0.9f)
             {
                 LogCombat($"Attack skipped - attack locked. progress={_view.CurrentAttackNormalizedTime:F2}");
                 return;
@@ -569,16 +557,10 @@ namespace Game.Player
             var nextConfig = GetAttackConfigForCombo(nextComboIndex);
             var cooldownSource = nextConfig != null ? nextConfig : _attackConfig;
             var cooldown = cooldownSource != null ? Mathf.Max(0.01f, cooldownSource.attackCooldown) : 0.5f;
-
-            // 콤보 진행 중에는 애니메이션 락(IsAttackPlaying)이 간격을 제어하므로,
-            // config 쿨다운이 커도 콤보가 끊겨 보이지 않도록 쿨다운을 최소화한다.
-            if (_comboIndex > 0)
-                cooldown = Mathf.Min(cooldown, 0.05f);
+            
 
             _lastAttackRequestTime = currentTime;
-            _nextAttackTime = currentTime + cooldown;
-
-            StartAttackCombo(_currentTarget, _gameManager);
+StartAttackCombo(_currentTarget, _gameManager);
         }
 
         private void ResetComboChain()
@@ -799,7 +781,6 @@ namespace Game.Player
 
         public void Idle()
         {
-            Debug.Log($"[ANIM] Idle() called  frame={Time.frameCount}");
             _stateManager.SwitchToState(new PlayerIdleState());
         }
 
@@ -810,7 +791,6 @@ namespace Game.Player
 
         public void Walk()
         {
-            Debug.Log($"[ANIM] Walk() called  frame={Time.frameCount}");
             _stateManager.SwitchToState(new PlayerWalkState());
         }
 

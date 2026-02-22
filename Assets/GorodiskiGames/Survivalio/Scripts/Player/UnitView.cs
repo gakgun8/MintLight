@@ -32,6 +32,7 @@ namespace Game.Unit
         [SerializeField] private Transform _aimNode;
         [SerializeField] private Renderer[] _renderers;
         [SerializeField] private float _radius = 0.5f;
+        [SerializeField] private float _walkFallbackSpeed = 1.0f; // Walk()만 호출될 때 BlendTree가 Idle로 붙는 것 방지
 
         public Transform RotateNode => _rotateNode;
         public Transform BulletNode => _bulletNode;
@@ -50,12 +51,12 @@ namespace Game.Unit
         private static readonly int Hash_IsWalk = Animator.StringToHash("IsWalk");
 
         private readonly List<int> _attackStateHashes = new List<int>(8);
+        private int _currentBaseStateHash;
         private bool _isAttackPlaying;
         private float _attackLockUntilTime;
         private bool _hasSpeedParameter;
         private bool _hasIsWalkParameter;
         private float _moveAnimHoldUntil;
-        private float _nextStopDebugLogTime;
 
         public Vector3 Position
         {
@@ -100,6 +101,7 @@ namespace Game.Unit
                 _defaultCullingMode = _animator.cullingMode;
                 _defaultUpdateMode = _animator.updateMode;
                 _defaultAnimatorSpeed = _animator.speed;
+                _currentBaseStateHash = _animator.GetCurrentAnimatorStateInfo(0).shortNameHash;
                 CacheAnimatorParameters();
                 CacheAttackHashes();
             }
@@ -141,41 +143,76 @@ namespace Game.Unit
         // Stable animation control
         // ----------------------------
 
-        public void Idle() => EnsureState(AnimatorStateType.Idle);
-        public void Walk() => EnsureState(AnimatorStateType.Walk);
-        public void Jump() => EnsureState(AnimatorStateType.Jump);
+        public void Idle()
+        {
+            // Prefer parameter-driven locomotion when available.
+            if (_animator != null && (_hasSpeedParameter || _hasIsWalkParameter))
+            {
+                if (_hasSpeedParameter) _animator.SetFloat(Hash_Speed, 0f);
+                if (_hasIsWalkParameter) _animator.SetBool(Hash_IsWalk, false);
+                return;
+            }
+
+            EnsureState(AnimatorStateType.Idle);
+        }
+
+public void Walk()
+{
+    if (_animator != null)
+    {
+        // ✅ Walk가 "시작만" 나오고 멈추는 경우 대부분 Speed가 0으로 떨어져 BlendTree가 Idle로 붙는 케이스
+        if (_hasSpeedParameter)
+        {
+            float s = _animator.GetFloat(Hash_Speed);
+            if (s < 0.01f)
+                _animator.SetFloat(Hash_Speed, _walkFallbackSpeed);
+        }
+
+        if (_hasIsWalkParameter)
+            _animator.SetBool(Hash_IsWalk, true);
+    }
+
+    _moveAnimHoldUntil = Time.time + 0.35f;
+    EnsureState(AnimatorStateType.Walk);
+}
+
+public void Jump() => EnsureState(AnimatorStateType.Jump);
         public void Die()  => EnsureState(AnimatorStateType.Die);
         public void Attack(float normalizedTime = float.NegativeInfinity) => EnsureState(AnimatorStateType.Attack, normalizedTime);
 
         public void SetMoveSpeed(float speed)
-        {
-            if (_animator == null)
-                return;
+{
+    if (_animator == null)
+        return;
 
-            var clampedSpeed = Mathf.Max(0f, speed);
+    var clampedSpeed = Mathf.Max(0f, speed);
 
-            if (_hasSpeedParameter)
-                _animator.SetFloat(Hash_Speed, clampedSpeed);
+    if (_hasSpeedParameter)
+        _animator.SetFloat(Hash_Speed, clampedSpeed);
 
-            if (_hasIsWalkParameter)
-                _animator.SetBool(Hash_IsWalk, clampedSpeed > 0.01f);
+    if (_hasIsWalkParameter)
+        _animator.SetBool(Hash_IsWalk, clampedSpeed > 0.01f);
 
-            if (clampedSpeed > 0.01f)
-            {
-                _moveAnimHoldUntil = Time.time + 0.12f; // 120ms 유지
-                if (!_hasSpeedParameter && !_hasIsWalkParameter)
-                    EnsureState(AnimatorStateType.Walk);
-            }
-            else
-            {
-                // 공격 중에는 Idle로 강제 전환하지 않음
-                if (!_isAttackPlaying && Time.time > _moveAnimHoldUntil)
-                {
-                    if (!_hasSpeedParameter && !_hasIsWalkParameter)
-                        EnsureState(AnimatorStateType.Idle);
-                }
-            }
-        }
+    if (clampedSpeed > 0.01f)
+    {
+        // ✅ 이동 중에는 Idle로 덮이지 않게 홀드 (틱 기반/입력 끊김에도 유지)
+        _moveAnimHoldUntil = Time.time + 0.35f;
+
+        // 이동은 공격보다 우선
+        _isAttackPlaying = false;
+        _attackLockUntilTime = 0f;
+
+        // 파라미터 기반 로코모션이면 CrossFade로 상태를 건드리지 않는다.
+        if (!(_hasSpeedParameter || _hasIsWalkParameter))
+            EnsureState(AnimatorStateType.Walk);
+    }
+    else
+    {
+        // 정지: 파라미터 기반이면 파라미터만 0으로 (상태 강제 전환 금지)
+        if (!(_hasSpeedParameter || _hasIsWalkParameter))
+            EnsureState(AnimatorStateType.Idle);
+    }
+}
 
         private void Update()
         {
@@ -183,14 +220,7 @@ namespace Game.Unit
                 return;
 
             var info = _animator.GetCurrentAnimatorStateInfo(0);
-            if (Time.time >= _nextStopDebugLogTime)
-            {
-                _nextStopDebugLogTime = Time.time + 0.25f;
-                var speed = _hasSpeedParameter ? _animator.GetFloat(Hash_Speed) : 0f;
-                var isWalk = _hasIsWalkParameter && _animator.GetBool(Hash_IsWalk);
-                if (speed <= 0.01f && !isWalk)
-                    Debug.Log($"[UnitView][StopDebug] {name} Speed={speed:F3} StateHash={info.shortNameHash} IsWalk={(_hasIsWalkParameter ? isWalk.ToString() : "N/A")}");
-            }
+            _currentBaseStateHash = info.shortNameHash;
 
             if (!_isAttackPlaying)
                 return;
@@ -216,53 +246,88 @@ namespace Game.Unit
             if (_animator == null)
                 return;
 
-            if ((state == AnimatorStateType.Walk || state == AnimatorStateType.Idle) && (_hasSpeedParameter || _hasIsWalkParameter))
-                return;
-
-            int hash = Animator.StringToHash(state.ToString());
             var info = _animator.GetCurrentAnimatorStateInfo(0);
 
-            // 이동이 발생하는 순간에는 공격 락 상태라도 Walk 전환을 허용한다.
-            // (조이스틱 이동/자동추적 이동 시 즉시 Walk 애니메이션 반영)
-            if (_isAttackPlaying && state == AnimatorStateType.Idle)
+            // ✅ Locomotion (Walk/Idle)은 파라미터 기반이면 상태 강제 전환하지 않는다.
+            if ((_hasSpeedParameter || _hasIsWalkParameter) && (state == AnimatorStateType.Walk || state == AnimatorStateType.Idle))
+            {
+                if (state == AnimatorStateType.Walk)
+                {
+                    _moveAnimHoldUntil = Time.time + 0.35f;
+                    _isAttackPlaying = false;
+                    _attackLockUntilTime = 0f;
+
+                    if (_hasIsWalkParameter)
+                        _animator.SetBool(Hash_IsWalk, true);
+
+                    if (_hasSpeedParameter)
+                    {
+                        var s = _animator.GetFloat(Hash_Speed);
+                        if (s < 0.01f)
+                            _animator.SetFloat(Hash_Speed, _walkFallbackSpeed);
+                    }
+                }
+                else // Idle
+                {
+                    // Speed가 살아 있으면 Idle로 덮지 않음
+                    if (_hasSpeedParameter)
+                    {
+                        var s = _animator.GetFloat(Hash_Speed);
+                        if (s > 0.01f || Time.time <= _moveAnimHoldUntil)
+                            return;
+                    }
+
+                    if (_hasIsWalkParameter)
+                        _animator.SetBool(Hash_IsWalk, false);
+
+                    if (_hasSpeedParameter)
+                        _animator.SetFloat(Hash_Speed, 0f);
+                }
+
                 return;
-
-
-            // ✅ 이동 중에는 Idle로 덮어쓰지 못하게 차단 (Walk 멈춤 방지)
-            if (state == AnimatorStateType.Idle)
-            {
-                // Speed 파라미터가 있으면 그 값을 기반으로 이동 여부 판단
-                if (_hasSpeedParameter)
-                {
-                    float s = _animator.GetFloat(Hash_Speed);
-                    if (s > 0.01f && Time.time <= _moveAnimHoldUntil) // 이동 중(짧은 홀드 시간 내)
-                        return;
-                }
-                else
-                {
-                    // Speed 파라미터가 없다면, 현재 상태가 Walk면 Idle로 못 바꾸게 방어
-                    var cur = _animator.GetCurrentAnimatorStateInfo(0);
-                    int walkHash = Animator.StringToHash(AnimatorStateType.Walk.ToString());
-                    if (cur.shortNameHash == walkHash)
-                        return;
-                }
-            }
-            if (state == AnimatorStateType.Walk)
-            {
-                _isAttackPlaying = false;
-                if (_hasIsWalkParameter)
-                    _animator.SetBool(Hash_IsWalk, true);
-            }
-            else if (state == AnimatorStateType.Idle)
-            {
-                if (_hasSpeedParameter)
-                    _animator.SetFloat(Hash_Speed, 0f);
-
-                if (_hasIsWalkParameter)
-                    _animator.SetBool(Hash_IsWalk, false);
             }
 
-            bool isSameState = info.shortNameHash == hash;
+            int hash = Animator.StringToHash(state.ToString());
+// 이동이 발생하는 순간에는 공격 락 상태라도 Walk 전환을 허용한다.
+// (조이스틱 이동/자동추적 이동 시 즉시 Walk 애니메이션 반영)
+if (state == AnimatorStateType.Idle)
+{
+    // ✅ 핵심: Speed가 살아있으면(또는 방금 이동했던 홀드 시간 내면) Idle로 덮지 않는다.
+    // 기존 Hold 기반만 쓰면 SetMoveSpeed가 매 프레임 안 들어오는 구조에서 "시작만 나오고 멈춤"이 발생 가능.
+    float s = (_animator != null && _hasSpeedParameter) ? _animator.GetFloat(Hash_Speed) : 0f;
+    if (s > 0.01f || Time.time <= _moveAnimHoldUntil)
+        return;
+}
+
+if (_isAttackPlaying && state == AnimatorStateType.Idle)
+    return;
+
+if (state == AnimatorStateType.Walk)
+    _isAttackPlaying = false;
+
+// 파라미터 기반 로코모션 지원 (Controller에 있으면 같이 세팅)
+if (state == AnimatorStateType.Walk)
+{
+    if (_hasIsWalkParameter)
+        _animator.SetBool(Hash_IsWalk, true);
+
+    if (_hasSpeedParameter)
+    {
+        float s = _animator.GetFloat(Hash_Speed);
+        if (s < 0.01f)
+            _animator.SetFloat(Hash_Speed, _walkFallbackSpeed);
+    }
+}
+else if (state == AnimatorStateType.Idle)
+{
+    if (_hasIsWalkParameter)
+        _animator.SetBool(Hash_IsWalk, false);
+
+    if (_hasSpeedParameter)
+        _animator.SetFloat(Hash_Speed, 0f);
+}
+
+            bool isSameState = info.shortNameHash == hash || _currentBaseStateHash == hash;
             if (isSameState && float.IsNegativeInfinity(normalizedTime))
                 return; // ✅ 같은 상태면 재시작 금지(Idle 떨림 방지)
 
@@ -270,8 +335,6 @@ namespace Game.Unit
             {
                 if (state == AnimatorStateType.Walk)
                     LogAnimationStateChange("Walk state not found. Speed-only locomotion fallback.");
-                else if (state == AnimatorStateType.Idle)
-                    LogAnimationStateChange("Idle state not found. Parameter-driven locomotion fallback.");
                 return;
             }
 
@@ -287,71 +350,22 @@ namespace Game.Unit
 
         private bool TryCrossFadeState(AnimatorStateType state, float normalizedTime)
         {
-            string[] candidates = BuildStateCandidates(state);
-            int targetHash = 0;
-            string targetStateName = null;
-            var candidateChecks = new List<string>(candidates.Length);
+            var stateName = state.ToString();
+            var layerState = $"Base Layer.{stateName}";
+            var hash = Animator.StringToHash(stateName);
+            var layerHash = Animator.StringToHash(layerState);
+            var hasState = _animator.HasState(0, hash) || _animator.HasState(0, layerHash);
 
-            for (int i = 0; i < candidates.Length; i++)
-            {
-                var candidate = candidates[i];
-                if (string.IsNullOrEmpty(candidate))
-                    continue;
-
-                int candidateHash = Animator.StringToHash(candidate);
-                bool found = _animator.HasState(0, candidateHash);
-                candidateChecks.Add($"{candidate}:{found}");
-                if (!found)
-                    continue;
-
-                targetHash = candidateHash;
-                targetStateName = candidate;
-                break;
-            }
-
-            if (targetHash == 0)
-            {
-                Debug.LogWarning($"[UnitView] TryCrossFadeState({state}) failed. Candidate HasState results => {string.Join(", ", candidateChecks)}");
+            if (!hasState)
                 return false;
-            }
 
+            var targetHash = _animator.HasState(0, hash) ? hash : layerHash;
             _animator.CrossFadeInFixedTime(targetHash, 0.08f, 0,
                 float.IsNegativeInfinity(normalizedTime) ? 0f : normalizedTime);
 
-            LogAnimationStateChange($"State => {targetStateName} (requested:{state})");
+            _currentBaseStateHash = targetHash;
+            LogAnimationStateChange($"State => {stateName}");
             return true;
-        }
-
-
-        private string[] BuildStateCandidates(AnimatorStateType state)
-        {
-            var stateName = state.ToString();
-            var candidates = new List<string>(12)
-            {
-                stateName,
-                $"Base Layer.{stateName}",
-            };
-
-            if (state == AnimatorStateType.Walk)
-            {
-                candidates.Add("Move");
-                candidates.Add("Run");
-                candidates.Add("Locomotion");
-                candidates.Add("WalkBlendTree");
-                candidates.Add("Locomotion.Walk");
-                candidates.Add("Base Layer.Move");
-                candidates.Add("Base Layer.Run");
-                candidates.Add("Base Layer.Locomotion");
-                candidates.Add("Base Layer.WalkBlendTree");
-                candidates.Add("Base Layer.Locomotion.Walk");
-            }
-            else if (state == AnimatorStateType.Idle)
-            {
-                candidates.Add("Locomotion.Idle");
-                candidates.Add("Base Layer.Locomotion.Idle");
-            }
-
-            return candidates.ToArray();
         }
 
         // ----------------------------
@@ -424,10 +438,9 @@ namespace Game.Unit
             // 1) Trigger parameter first
             if (!string.IsNullOrEmpty(cfg.animatorTrigger))
             {
-                var parameters = _animator.parameters;
-                for (int i = 0; i < parameters.Length; i++)
+                for (int i = 0; i < _animator.parameterCount; i++)
                 {
-                    var p = parameters[i];
+                    var p = _animator.GetParameter(i);
                     if (p.type == AnimatorControllerParameterType.Trigger && p.name == cfg.animatorTrigger)
                     {
                         _animator.ResetTrigger(cfg.animatorTrigger);
@@ -523,6 +536,7 @@ namespace Game.Unit
 
                 _animator.CrossFadeInFixedTime(hash, 0.05f, 0, normalizedTime);
                 _animator.Update(0f);
+                _currentBaseStateHash = hash;
                 LogAnimationStateChange($"State => {name}");
                 return true;
             }
@@ -542,7 +556,7 @@ namespace Game.Unit
             _attackLockUntilTime = Time.time + Mathf.Max(0.15f, clipLen / speed);
         }
 
-        private void CacheAnimatorParameters()
+                private void CacheAnimatorParameters()
         {
             _hasSpeedParameter = false;
             _hasIsWalkParameter = false;
@@ -550,25 +564,37 @@ namespace Game.Unit
             if (_animator == null)
                 return;
 
+            // Unity Animator.GetParameter(index) can throw for some controller/override setups.
+            // Use the safe parameters array instead.
             var parameters = _animator.parameters;
             if (parameters == null || parameters.Length == 0)
                 return;
 
             for (int i = 0; i < parameters.Length; i++)
             {
-                var parameter = parameters[i];
-                if (parameter.type == AnimatorControllerParameterType.Float && parameter.nameHash == Hash_Speed)
+                var p = parameters[i];
+
+                if (!_hasSpeedParameter &&
+                    p.type == UnityEngine.AnimatorControllerParameterType.Float &&
+                    p.nameHash == Hash_Speed)
                 {
                     _hasSpeedParameter = true;
-                    continue;
                 }
 
-                if (parameter.type == AnimatorControllerParameterType.Bool && parameter.nameHash == Hash_IsWalk)
+                if (!_hasIsWalkParameter &&
+                    p.type == UnityEngine.AnimatorControllerParameterType.Bool &&
+                    p.nameHash == Hash_IsWalk)
+                {
                     _hasIsWalkParameter = true;
+                }
 
                 if (_hasSpeedParameter && _hasIsWalkParameter)
                     break;
             }
+
+#if UNITY_EDITOR
+            Debug.Log($"[UnitView] CacheAnimatorParameters name={name} hasSpeed={_hasSpeedParameter} hasIsWalk={_hasIsWalkParameter}");
+#endif
         }
 
         private void CacheAttackHashes()
@@ -641,18 +667,9 @@ namespace Game.Unit
 
             // RuntimeAnimatorController가 바뀌면 파라미터/상태 캐시를 다시 잡아야 한다.
             // (초기 Awake()에서 캐시한 Speed 유무가 오래된 값이면 이동 애니메이션이 갱신되지 않을 수 있음)
-            try
-            {
-                CacheAnimatorParameters();
-            }
-            catch (System.Exception ex)
-            {
-                Debug.LogWarning($"[UnitView] {name} Failed to cache animator parameters: {ex.Message}");
-                _hasSpeedParameter = false;
-                _hasIsWalkParameter = false;
-            }
-
+            CacheAnimatorParameters();
             CacheAttackHashes();
+            _currentBaseStateHash = _animator.GetCurrentAnimatorStateInfo(0).shortNameHash;
         }
 
         // ----------------------------
@@ -769,7 +786,5 @@ namespace Game.Unit
                 mat.SetFloat(BlinkAmountShaderProperty, value);
             }
         }
-       
-
     }
 }
