@@ -70,6 +70,7 @@ namespace Game.Enemy
         private readonly bool _isBoss;
         private readonly StateManager<EnemyState> _stateManager;
         private readonly GameManager _gameManager;
+        private readonly EnemyCombatController _combatController;
 
         public EnemyController(EnemyView view, Context context, bool isBoss) : base(view)
         {
@@ -91,10 +92,16 @@ namespace Game.Enemy
 
             _view.PlayEffect(true);
             _view.SetCollider(true);
+
+            _combatController = new EnemyCombatController();
+            var relay = _view.GetComponentInChildren<AnimationEventsRelay>(true);
+            if (relay != null) relay.RegisterReceiver(_combatController);
         }
         
         public void Dispose()
         {
+            var relay = _view.GetComponentInChildren<AnimationEventsRelay>(true);
+            if (relay != null) relay.UnregisterReceiver(_combatController);
             _stateManager.Dispose();
             _view.PlayEffect(false);
         }

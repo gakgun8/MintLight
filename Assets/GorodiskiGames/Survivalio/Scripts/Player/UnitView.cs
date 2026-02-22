@@ -27,6 +27,7 @@ namespace Game.Unit
 
         [SerializeField] private CapsuleCollider _collider;
         [SerializeField] private Animator _animator;
+        [SerializeField] private UnitAnimatorDriver _animatorDriver;
         [SerializeField] private Transform _rotateNode;
         [SerializeField] private Transform _bulletNode;
         [SerializeField] private Transform _aimNode;
@@ -84,6 +85,9 @@ namespace Game.Unit
 
         protected virtual void Awake()
         {
+            if (_animatorDriver == null)
+                _animatorDriver = GetComponentInChildren<UnitAnimatorDriver>(true);
+
             if (_animator == null)
                 _animator = GetComponentInChildren<Animator>(true);
 
@@ -131,12 +135,15 @@ namespace Game.Unit
         }
 
         public float GetCurrentStateLength => _animator != null ? _animator.GetCurrentAnimatorStateInfo(0).length : 0f;
-        public bool IsAttackPlaying => _isAttackPlaying;
+        public bool IsAttackPlaying => _animatorDriver != null ? _animatorDriver.IsAttackPlaying : _isAttackPlaying;
 
         public float CurrentAttackNormalizedTime
         {
             get
             {
+                if (_animatorDriver != null)
+                    return _animatorDriver.CurrentAttackNormalizedTime;
+
                 if (_animator == null)
                     return 1f;
 
@@ -151,51 +158,12 @@ namespace Game.Unit
 
         public void Idle()
         {
-            LogLocomotionCall("Idle()");
-
-            if (_animator != null && _hasSpeedParameter)
-            {
-                var currentSpeed = _animator.GetFloat(Hash_Speed);
-                if (currentSpeed > 0.01f || Time.time <= _moveAnimHoldUntil)
-                {
-                    LogAnimatorSnapshot("Idle:skipped-moving", false);
-                    return;
-                }
-            }
-
-            // Prefer parameter-driven locomotion when available.
-            if (_animator != null && (_hasSpeedParameter || _hasIsWalkParameter))
-            {
-                if (_hasSpeedParameter) _animator.SetFloat(Hash_Speed, 0f);
-                if (_hasIsWalkParameter) _animator.SetBool(Hash_IsWalk, false);
-                LogAnimatorSnapshot("Idle:param", false);
-                return;
-            }
-
-            EnsureState(AnimatorStateType.Idle);
+            SetMoveSpeed(0f);
         }
 
 public void Walk()
 {
-    LogLocomotionCall("Walk()");
-
-    if (_animator != null)
-    {
-        // ✅ Walk가 "시작만" 나오고 멈추는 경우 대부분 Speed가 0으로 떨어져 BlendTree가 Idle로 붙는 케이스
-        if (_hasSpeedParameter)
-        {
-            float s = _animator.GetFloat(Hash_Speed);
-            if (s < 0.01f)
-                _animator.SetFloat(Hash_Speed, _walkFallbackSpeed);
-        }
-
-        if (_hasIsWalkParameter)
-            _animator.SetBool(Hash_IsWalk, true);
-    }
-
-    _moveAnimHoldUntil = Time.time + 0.35f;
-    LogAnimatorSnapshot("Walk:param", false);
-    EnsureState(AnimatorStateType.Walk);
+    SetMoveSpeed(1f);
 }
 
 public void Jump() => EnsureState(AnimatorStateType.Jump);
@@ -204,39 +172,14 @@ public void Jump() => EnsureState(AnimatorStateType.Jump);
 
 public void SetMoveSpeed(float speed)
 {
-    if (_animator == null)
-        return;
-
+    // NOTE: locomotion is parameter-driven only.
+    // This removes state forcing conflicts (Idle/Walk/Attack tug-of-war).
     var clampedSpeed = Mathf.Max(0f, speed);
 
-    if (_hasSpeedParameter)
+    if (_animatorDriver != null)
+        _animatorDriver.SetMoveSpeed(clampedSpeed);
+    else if (_animator != null && _hasSpeedParameter)
         _animator.SetFloat(Hash_Speed, clampedSpeed);
-
-    if (_hasIsWalkParameter)
-        _animator.SetBool(Hash_IsWalk, clampedSpeed > 0.01f);
-
-    if (clampedSpeed > 0.01f)
-    {
-        // ✅ 이동 중에는 Idle로 덮이지 않게 홀드 (틱 기반/입력 끊김에도 유지)
-        _moveAnimHoldUntil = Time.time + 0.35f;
-
-        // 이동 파라미터 갱신만으로 공격 상태를 강제로 해제하지 않는다.
-        // (공격 도중 SetMoveSpeed가 들어와 애니메이션이 끊기는 문제 방지)
-        if (!_isAttackPlaying || CurrentAttackNormalizedTime >= 0.9f)
-            _attackLockUntilTime = 0f;
-
-        // 파라미터 기반 로코모션이면 CrossFade로 상태를 건드리지 않는다.
-        if (!(_hasSpeedParameter || _hasIsWalkParameter))
-            EnsureState(AnimatorStateType.Walk);
-    }
-    else
-    {
-        // 정지: 파라미터 기반이면 파라미터만 0으로 (상태 강제 전환 금지)
-        if (!(_hasSpeedParameter || _hasIsWalkParameter))
-            EnsureState(AnimatorStateType.Idle);
-    }
-
-    LogAnimatorSnapshot($"SetMoveSpeed:{clampedSpeed:F2}", false);
 }
 
         private void Update()
@@ -414,51 +357,15 @@ else if (state == AnimatorStateType.Idle)
         /// </summary>
         public void PlayAttackCombo(int comboIndex)
         {
-            if (_animator == null)
-                return;
-
-            if (_isAttackPlaying)
-            {
-                var attackProgress = CurrentAttackNormalizedTime;
-                if (attackProgress < 0.9f)
-                    return;
-            }
-
             comboIndex = Mathf.Clamp(comboIndex, 1, 3);
 
-            // 혹시 남아있는 트리거/인덱스 전이 제거
-            _animator.ResetTrigger(Hash_AttackTrigger);
-            _animator.SetInteger(Hash_AttackIndex, 0);
-
-            // Base Layer state names in your screenshot:
-            // Attack_01 / Attack_02 / Attack_03
-            string s00 = $"Attack_{comboIndex:00}";
-            string s01 = $"Attack{comboIndex:00}";
-            string s1  = $"Attack{comboIndex}";
-            string s_1 = $"Attack_{comboIndex}";
-
-            string[] candidates =
-            {
-                s00, s01, s1, s_1,
-                // just in case Unity stored full paths
-                $"Base Layer.{s00}", $"Base Layer.{s01}", $"Base Layer.{s1}", $"Base Layer.{s_1}",
-            };
-
-            bool played = TryPlayAnyState(candidates, normalizedTime: 0f);
-
-            // Fallback: parameter-based trigger (if someone renamed states)
-            if (!played)
+            if (_animatorDriver != null)
+                _animatorDriver.PlayAttack(comboIndex);
+            else
             {
                 _animator.SetInteger(Hash_AttackIndex, comboIndex);
                 _animator.SetTrigger(Hash_AttackTrigger);
-                _animator.Update(0f);
-                MarkAttackStarted();
-                LogAnimationStateChange($"Attack trigger => combo:{comboIndex}");
-                return;
             }
-
-            MarkAttackStarted();
-            LogAnimationStateChange($"Attack play => combo:{comboIndex}");
         }
 
         /// <summary>
@@ -472,48 +379,14 @@ else if (state == AnimatorStateType.Idle)
                 return;
 
             // 1) Trigger parameter first
-            if (!string.IsNullOrEmpty(cfg.animatorTrigger))
-            {
-                for (int i = 0; i < _animator.parameterCount; i++)
-                {
-                    var p = _animator.GetParameter(i);
-                    if (p.type == AnimatorControllerParameterType.Trigger && p.name == cfg.animatorTrigger)
-                    {
-                        _animator.ResetTrigger(cfg.animatorTrigger);
-                        _animator.SetTrigger(cfg.animatorTrigger);
-                        _animator.Update(0f);
-                        MarkAttackStarted();
-                        LogAnimationStateChange($"Attack trigger => {cfg.animatorTrigger}");
-                        return;
-                    }
-                }
-            }
-
-            // 2) Treat animatorTrigger as a state name (with fallbacks)
-            var candidates = new System.Collections.Generic.List<string>(8);
-            if (!string.IsNullOrEmpty(cfg.animatorTrigger))
-            {
-                candidates.Add(cfg.animatorTrigger);
-                candidates.Add($"Base Layer.{cfg.animatorTrigger}");
-            }
-
+            var comboIndex = 1;
             if (!string.IsNullOrEmpty(cfg.id))
             {
-                string pretty = cfg.id.Replace("attack", "Attack").Replace("ATK", "Attack");
-                candidates.Add(pretty);
-                candidates.Add($"Base Layer.{pretty}");
-
-                if (cfg.id.Contains("01")) candidates.Add("Attack_01");
-                if (cfg.id.Contains("02")) candidates.Add("Attack_02");
-                if (cfg.id.Contains("03")) candidates.Add("Attack_03");
+                if (cfg.id.Contains("02")) comboIndex = 2;
+                else if (cfg.id.Contains("03")) comboIndex = 3;
             }
 
-            if (!TryPlayAnyState(candidates.ToArray(), normalizedTime: 0f))
-            {
-                EnsureState(AnimatorStateType.Attack, 0f);
-            }
-
-            MarkAttackStarted();
+            PlayAttackCombo(comboIndex);
         }
 
         /// <summary>

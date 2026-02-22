@@ -1,33 +1,42 @@
+using Game.Unit;
 using UnityEngine;
 
 namespace Game.Player
 {
+    /// <summary>
+    /// Backward-compatible bridge.
+    /// New clips should call AnimationEventsRelay directly.
+    /// </summary>
     public sealed class AnimatorEventsView : MonoBehaviour
     {
-        [SerializeField] private PlayerView _playerView;
+        [SerializeField] private AnimationEventsRelay _relay;
 
-        public void FireFootOnGround()
+        private void Awake()
         {
-            if(_playerView == null)
-                return;
-
-            _playerView.FireFootOnGround();
+            if (_relay == null)
+                _relay = GetComponent<AnimationEventsRelay>();
         }
 
         public void FireAttackHit()
         {
-            if (_playerView == null)
-                return;
-
-            _playerView.FireAttackHit();
+            if (_relay != null)
+                _relay.FireAttackHit();
         }
 
-        public void FireAttackDash()
+        public void AttackWindupStart()
         {
-            if (_playerView == null)
-                return;
-
-            _playerView.FireAttackDash();
+            if (_relay != null)
+                _relay.AttackWindupStart();
         }
+
+        public void AttackRecoverEnd()
+        {
+            if (_relay != null)
+                _relay.AttackRecoverEnd();
+        }
+
+        // Legacy no-op to keep old footstep events from throwing missing-method warnings.
+        public void FireFootOnGround() { }
+        public void FireAttackDash() { }
     }
 }
