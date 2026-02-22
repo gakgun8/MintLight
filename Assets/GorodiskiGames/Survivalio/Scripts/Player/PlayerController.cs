@@ -370,15 +370,10 @@ namespace Game.Player
             if (_currentTarget != null && (_currentTarget.Model == null || _currentTarget.Model.Health <= 0 || _currentTarget.View == null))
                 _currentTarget = null;
 
+            // Keep the locked target until it dies.
+            // This prevents combo/animation drops when a single target briefly leaves detection range.
             if (_currentTarget != null)
-            {
-                var chaseDistance = Vector3.Distance(playerPosition, _currentTarget.View.Position);
-                if (chaseDistance <= Mathf.Max(maxDistance, _autoCombatConfig.chaseRadius))
-                {
-                    bestEnemy = _currentTarget;
-                    shortestDistance = chaseDistance;
-                }
-            }
+                return;
 
             for (int i = 0; i < _gameManager.Enemies.Count; i++)
             {
@@ -467,11 +462,6 @@ namespace Game.Player
 
             _view.SetMoveSpeed(normalizedSpeed);
             _view.Walk();
-            if (!_comboResetByMovement)
-            {
-                ResetComboChain();
-                _comboResetByMovement = true;
-            }
 
             if (!_isAutoMoving)
             {
