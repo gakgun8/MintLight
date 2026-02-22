@@ -4,11 +4,11 @@ namespace Game.Player.States
 {
     public sealed class PlayerWalkState : PlayerCheckCollisionState
     {
-        private const float AttackRequestLocomotionLockDuration = 0.20f;
         private const float StalledMoveDistanceEpsilon = 0.0001f;
         private const float LargeUnscaledDeltaTimeThreshold = 0.05f;
         private const float InputReleaseGraceTime = 0.10f;
         private const float InputDeadzone = 0.10f;
+        private const float WalkMaintainMinSpeed = 0.12f;
 
         private float _walkSpeed;
         private float _rotateSpeed;
@@ -59,6 +59,7 @@ namespace Game.Player.States
             if (!hasEffectiveInput && (_timer.Time - _lastInputDetectedTime) > InputReleaseGraceTime)
             {
                 _player.ReportManualInput(Vector2.zero);
+                _player.View.SetMoveSpeed(0f);
                 _player.Idle();
                 return;
             }
@@ -115,11 +116,15 @@ namespace Game.Player.States
             var inputSpeed = Mathf.Clamp01(_inputDirection.magnitude);
             var displacementSpeed = movedDistance / Mathf.Max(0.0001f, _walkSpeed * Time.deltaTime);
             var normalizedSpeed = Mathf.Max(inputSpeed, displacementSpeed);
+            if (inputSpeed > 0.01f)
+                normalizedSpeed = Mathf.Max(normalizedSpeed, WalkMaintainMinSpeed);
+
             _player.View.SetMoveSpeed(normalizedSpeed);
 
-            var attackLocomotionLocked = (_timer.Time - _player.LastAttackRequestTime) < AttackRequestLocomotionLockDuration;
-            if (normalizedSpeed > 0.05f && !_player.View.IsAttackPlaying && !attackLocomotionLocked)
+            if (normalizedSpeed > 0.05f && !_player.View.IsAttackPlaying)
                 _player.View.Walk();
+            else if (normalizedSpeed <= 0.01f && !_player.View.IsAttackPlaying)
+                _player.View.Idle();
 
             DebugMoveTrace(beforePosition, afterPosition);
         }
