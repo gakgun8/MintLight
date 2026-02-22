@@ -255,30 +255,71 @@ namespace Game.Unit
 
         private bool TryCrossFadeState(AnimatorStateType state, float normalizedTime)
         {
-            Debug.Log($"[UnitView] TryCrossFadeState({state}) hasState? " +
-          $"{_animator.HasState(0, Animator.StringToHash(state.ToString()))} " +
-          $"cur={_animator.GetCurrentAnimatorStateInfo(0).shortNameHash}");
-            if (!hasState)
+            string[] candidates = BuildStateCandidates(state);
+            int targetHash = 0;
+            string targetStateName = null;
+            var candidateChecks = new List<string>(candidates.Length);
+
+            for (int i = 0; i < candidates.Length; i++)
             {
-                Debug.Log($"[UnitView] Missing state: {stateName} (hash={hash})");
+                var candidate = candidates[i];
+                if (string.IsNullOrEmpty(candidate))
+                    continue;
+
+                int candidateHash = Animator.StringToHash(candidate);
+                bool found = _animator.HasState(0, candidateHash);
+                candidateChecks.Add($"{candidate}:{found}");
+                if (!found)
+                    continue;
+
+                targetHash = candidateHash;
+                targetStateName = candidate;
+                break;
+            }
+
+            if (targetHash == 0)
+            {
+                Debug.LogWarning($"[UnitView] TryCrossFadeState({state}) failed. Candidate HasState results => {string.Join(", ", candidateChecks)}");
                 return false;
             }
-            var stateName = state.ToString();
-            var layerState = $"Base Layer.{stateName}";
-            var hash = Animator.StringToHash(stateName);
-            var layerHash = Animator.StringToHash(layerState);
-            var hasState = _animator.HasState(0, hash) || _animator.HasState(0, layerHash);
 
-            if (!hasState)
-                return false;
-
-            var targetHash = _animator.HasState(0, hash) ? hash : layerHash;
             _animator.CrossFadeInFixedTime(targetHash, 0.08f, 0,
                 float.IsNegativeInfinity(normalizedTime) ? 0f : normalizedTime);
 
             _currentBaseStateHash = targetHash;
-            LogAnimationStateChange($"State => {stateName}");
+            LogAnimationStateChange($"State => {targetStateName} (requested:{state})");
             return true;
+        }
+
+        private string[] BuildStateCandidates(AnimatorStateType state)
+        {
+            var stateName = state.ToString();
+            var candidates = new List<string>(12)
+            {
+                stateName,
+                $"Base Layer.{stateName}",
+            };
+
+            if (state == AnimatorStateType.Walk)
+            {
+                candidates.Add("Move");
+                candidates.Add("Run");
+                candidates.Add("Locomotion");
+                candidates.Add("WalkBlendTree");
+                candidates.Add("Locomotion.Walk");
+                candidates.Add("Base Layer.Move");
+                candidates.Add("Base Layer.Run");
+                candidates.Add("Base Layer.Locomotion");
+                candidates.Add("Base Layer.WalkBlendTree");
+                candidates.Add("Base Layer.Locomotion.Walk");
+            }
+            else if (state == AnimatorStateType.Idle)
+            {
+                candidates.Add("Locomotion.Idle");
+                candidates.Add("Base Layer.Locomotion.Idle");
+            }
+
+            return candidates.ToArray();
         }
 
         // ----------------------------
