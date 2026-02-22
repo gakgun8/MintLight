@@ -53,6 +53,7 @@ namespace Game.Unit
         private bool _isAttackPlaying;
         private float _attackLockUntilTime;
         private bool _hasSpeedParameter;
+        private float _moveAnimHoldUntil;
 
         public Vector3 Position
         {
@@ -155,9 +156,17 @@ namespace Game.Unit
             if (_hasSpeedParameter)
                 _animator.SetFloat(Hash_Speed, clampedSpeed);
 
-            // 이동 입력/자동이동이 존재하면 Walk 상태를 최우선으로 시도한다.
             if (clampedSpeed > 0.01f)
+            {
+                _moveAnimHoldUntil = Time.time + 0.12f; // 120ms 유지
                 EnsureState(AnimatorStateType.Walk);
+            }
+            else
+            {
+                // 공격 중에는 Idle로 강제 전환하지 않음
+                if (!_isAttackPlaying && Time.time > _moveAnimHoldUntil)
+                    EnsureState(AnimatorStateType.Idle);
+            }
         }
 
         private void Update()
@@ -200,6 +209,26 @@ namespace Game.Unit
             if (_isAttackPlaying && state == AnimatorStateType.Idle)
                 return;
 
+
+            // ✅ 이동 중에는 Idle로 덮어쓰지 못하게 차단 (Walk 멈춤 방지)
+            if (state == AnimatorStateType.Idle)
+            {
+                // Speed 파라미터가 있으면 그 값을 기반으로 이동 여부 판단
+                if (_hasSpeedParameter)
+                {
+                    float s = _animator.GetFloat(Hash_Speed);
+                    if (s > 0.01f) // 이동 중
+                        return;
+                }
+                else
+                {
+                    // Speed 파라미터가 없다면, 현재 상태가 Walk면 Idle로 못 바꾸게 방어
+                    var cur = _animator.GetCurrentAnimatorStateInfo(0);
+                    int walkHash = Animator.StringToHash(AnimatorStateType.Walk.ToString());
+                    if (cur.shortNameHash == walkHash || _currentBaseStateHash == walkHash)
+                        return;
+                }
+            }
             if (state == AnimatorStateType.Walk)
                 _isAttackPlaying = false;
 
@@ -226,6 +255,14 @@ namespace Game.Unit
 
         private bool TryCrossFadeState(AnimatorStateType state, float normalizedTime)
         {
+            Debug.Log($"[UnitView] TryCrossFadeState({state}) hasState? " +
+          $"{_animator.HasState(0, Animator.StringToHash(state.ToString()))} " +
+          $"cur={_animator.GetCurrentAnimatorStateInfo(0).shortNameHash}");
+            if (!hasState)
+            {
+                Debug.Log($"[UnitView] Missing state: {stateName} (hash={hash})");
+                return false;
+            }
             var stateName = state.ToString();
             var layerState = $"Base Layer.{stateName}";
             var hash = Animator.StringToHash(stateName);
@@ -635,5 +672,7 @@ namespace Game.Unit
                 mat.SetFloat(BlinkAmountShaderProperty, value);
             }
         }
+       
+
     }
 }

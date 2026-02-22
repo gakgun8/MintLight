@@ -782,6 +782,7 @@ namespace Game.Player
 
         public void Idle()
         {
+            Debug.Log($"[ANIM] Idle() called  frame={Time.frameCount}");
             _stateManager.SwitchToState(new PlayerIdleState());
         }
 
@@ -792,6 +793,7 @@ namespace Game.Player
 
         public void Walk()
         {
+            Debug.Log($"[ANIM] Walk() called  frame={Time.frameCount}");
             _stateManager.SwitchToState(new PlayerWalkState());
         }
 
