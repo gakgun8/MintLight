@@ -4,6 +4,7 @@ namespace Game.Player.States
 {
     public sealed class PlayerWalkState : PlayerCheckCollisionState
     {
+        private const float AttackRequestLocomotionLockDuration = 0.20f;
         private const float StalledMoveDistanceEpsilon = 0.0001f;
         private const float LargeUnscaledDeltaTimeThreshold = 0.05f;
 
@@ -91,7 +92,8 @@ namespace Game.Player.States
             var normalizedSpeed = movedDistance / Mathf.Max(0.0001f, _walkSpeed * Time.deltaTime);
             _player.View.SetMoveSpeed(normalizedSpeed);
 
-            if (normalizedSpeed > 0.05f && !_player.View.IsAttackPlaying)
+            var attackLocomotionLocked = (_timer.Time - _player.LastAttackRequestTime) < AttackRequestLocomotionLockDuration;
+            if (normalizedSpeed > 0.05f && !_player.View.IsAttackPlaying && !attackLocomotionLocked)
                 _player.View.Walk();
 
             DebugMoveTrace(beforePosition, afterPosition);
