@@ -204,7 +204,8 @@ namespace Game.Player
         private const float AutoMoveResumeDelay = 0.15f;
         private const float ManualInputGraceDuration = 0.10f;
         private const float MovementDebugLogInterval = 0.35f;
-        private const float ManualInputDeadzone = 0.1f;
+        private const float ManualInputPressDeadzone = 0.12f;
+        private const float ManualInputReleaseDeadzone = 0.08f;
         private float _manualInputMagnitude;
         private bool _hasManualInput;
         private float _lastManualInputTime = -999f;
@@ -512,7 +513,15 @@ namespace Game.Player
         public void ReportManualInput(Vector2 inputDirection)
         {
             _manualInputMagnitude = inputDirection.magnitude;
-            _hasManualInput = _manualInputMagnitude > ManualInputDeadzone;
+
+            // Deadzone jitter로 인한 manual 상태 플리커/고착을 줄이기 위해 히스테리시스를 사용한다.
+            var pressThreshold = ManualInputPressDeadzone;
+            var releaseThreshold = Mathf.Min(pressThreshold, ManualInputReleaseDeadzone);
+
+            if (_hasManualInput)
+                _hasManualInput = _manualInputMagnitude > releaseThreshold;
+            else
+                _hasManualInput = _manualInputMagnitude > pressThreshold;
 
             if (_hasManualInput)
                 _lastManualInputTime = _timer.Time;
