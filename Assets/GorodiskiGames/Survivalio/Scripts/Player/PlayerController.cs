@@ -480,7 +480,9 @@ namespace Game.Player
             var beforePosition = _view.Position;
             _view.Position += direction * moveSpeed * Time.deltaTime;
             var movedDistance = Vector3.Distance(beforePosition, _view.Position);
-            var normalizedSpeed = movedDistance / Mathf.Max(0.0001f, _model.WalkSpeed * Time.deltaTime);
+            var displacementSpeed = movedDistance / Mathf.Max(0.0001f, _model.WalkSpeed * Time.deltaTime);
+            var intentSpeed = Mathf.Clamp01(moveSpeed / Mathf.Max(0.0001f, _model.WalkSpeed));
+            var normalizedSpeed = Mathf.Max(intentSpeed, displacementSpeed);
 
             _view.SetMoveSpeed(normalizedSpeed);
             _view.Walk();

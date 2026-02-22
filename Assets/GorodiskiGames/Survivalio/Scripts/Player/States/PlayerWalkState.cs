@@ -89,7 +89,12 @@ namespace Game.Player.States
             _player.View.Position += _moveDirection * _walkSpeed * Time.deltaTime;
             var afterPosition = _player.View.Position;
             var movedDistance = Vector3.Distance(beforePosition, afterPosition);
-            var normalizedSpeed = movedDistance / Mathf.Max(0.0001f, _walkSpeed * Time.deltaTime);
+            // Use input-driven locomotion speed as the primary signal.
+            // Position delta can be 0 intermittently due to collision/frame jitter and causes
+            // Speed(0) spikes that kick BlendTree back to Idle for a frame.
+            var inputSpeed = Mathf.Clamp01(_inputDirection.magnitude);
+            var displacementSpeed = movedDistance / Mathf.Max(0.0001f, _walkSpeed * Time.deltaTime);
+            var normalizedSpeed = Mathf.Max(inputSpeed, displacementSpeed);
             _player.View.SetMoveSpeed(normalizedSpeed);
 
             var attackLocomotionLocked = (_timer.Time - _player.LastAttackRequestTime) < AttackRequestLocomotionLockDuration;
