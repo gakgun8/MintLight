@@ -90,6 +90,10 @@ namespace Game.Player.States
             var movedDistance = Vector3.Distance(beforePosition, afterPosition);
             var normalizedSpeed = movedDistance / Mathf.Max(0.0001f, _walkSpeed * Time.deltaTime);
             _player.View.SetMoveSpeed(normalizedSpeed);
+
+            if (normalizedSpeed > 0.05f && !_player.View.IsAttackPlaying)
+                _player.View.Walk();
+
             DebugMoveTrace(beforePosition, afterPosition);
         }
 

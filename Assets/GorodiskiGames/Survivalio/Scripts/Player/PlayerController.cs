@@ -276,14 +276,15 @@ namespace Game.Player
             var speed = deltaPos.magnitude / deltaTime;
             _lastTickPosition = currentPosition;
 
-            var hasManualInput = _hasManualInput;
+            var hasManualInput = _hasManualInput || (currentTime - _lastManualInputTime) < 0.10f;
             var hasTarget = _currentTarget != null;
             var didRotateToTarget = false;
             var autoCombatRunning = false;
 
             if (hasManualInput)
             {
-                StopAutoMovement();
+                _lastManualInputTime = currentTime;
+                StopAutoMovement(keepManualAnim: true);
                 LogMovementState(hasManualInput, hasTarget, autoCombatRunning, didRotateToTarget, deltaPos, speed);
                 return;
             }
@@ -484,15 +485,19 @@ namespace Game.Player
             }
         }
 
-        private void StopAutoMovement()
+        private void StopAutoMovement(bool keepManualAnim = false)
         {
             if (!_isAutoMoving)
                 return;
 
             _isAutoMoving = false;
-            _view.SetMoveSpeed(0f);
-            if (!_view.IsAttackPlaying)
-                _view.Idle();
+
+            if (!keepManualAnim)
+            {
+                _view.SetMoveSpeed(0f);
+                if (!_view.IsAttackPlaying)
+                    _view.Idle();
+            }
 
             LogCombat("Auto approach stopped.");
         }
