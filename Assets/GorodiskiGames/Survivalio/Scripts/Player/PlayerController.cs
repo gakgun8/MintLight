@@ -10,7 +10,6 @@ using Game.Effect;
 using Game.Managers;
 using Game.Modules;
 using Game.Player.States;
-using Game.UI;
 using Game.Unit;
 using Game.Weapon;
 using Injection;
@@ -176,7 +175,6 @@ namespace Game.Player
         private readonly PlayerModel _model;
         private readonly Timer _timer;
         private readonly GameManager _gameManager;
-        private readonly GameView _gameView;
         private readonly AutoCombatConfig _autoCombatConfig;
         private readonly AttackConfig _attackConfig;
         private readonly AttackConfig[] _comboConfigs;
@@ -219,7 +217,6 @@ namespace Game.Player
             _view = view;
             _model = model;
             _timer = context.Get<Timer>();
-            context.TryGet(out _gameView);
 
             if (!context.TryGet(out _gameManager))
                 Debug.LogWarning("[PlayerController] GameManager was not found in context. Player combat target scan is disabled for this mode.");
@@ -279,7 +276,7 @@ namespace Game.Player
             var speed = deltaPos.magnitude / deltaTime;
             _lastTickPosition = currentPosition;
 
-            var hasManualInput = _hasManualInput || (_gameView != null && _gameView.Joystick != null && _gameView.Joystick.HasInput);
+            var hasManualInput = _hasManualInput || (currentTime - _lastManualInputTime) < 0.10f;
             var hasTarget = _currentTarget != null;
             var didRotateToTarget = false;
             var autoCombatRunning = false;
