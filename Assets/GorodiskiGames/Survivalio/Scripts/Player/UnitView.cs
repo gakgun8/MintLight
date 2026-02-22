@@ -34,7 +34,7 @@ namespace Game.Unit
         [SerializeField] private float _radius = 0.5f;
         [SerializeField] private float _walkFallbackSpeed = 1.0f; // Walk()만 호출될 때 BlendTree가 Idle로 붙는 것 방지
         [Header("Animation Diagnostics")]
-        [SerializeField] private bool _enableAnimationDiagnostics = true;
+        [SerializeField] private bool _enableAnimationDiagnostics = false;
         [SerializeField] private float _animationDiagnosticsInterval = 0.25f;
         [SerializeField] private float _locomotionCallLogInterval = 0.2f;
 
@@ -153,6 +153,16 @@ namespace Game.Unit
         {
             LogLocomotionCall("Idle()");
 
+            if (_animator != null && _hasSpeedParameter)
+            {
+                var currentSpeed = _animator.GetFloat(Hash_Speed);
+                if (currentSpeed > 0.01f || Time.time <= _moveAnimHoldUntil)
+                {
+                    LogAnimatorSnapshot("Idle:skipped-moving", false);
+                    return;
+                }
+            }
+
             // Prefer parameter-driven locomotion when available.
             if (_animator != null && (_hasSpeedParameter || _hasIsWalkParameter))
             {
@@ -210,9 +220,10 @@ public void SetMoveSpeed(float speed)
         // ✅ 이동 중에는 Idle로 덮이지 않게 홀드 (틱 기반/입력 끊김에도 유지)
         _moveAnimHoldUntil = Time.time + 0.35f;
 
-        // 이동은 공격보다 우선
-        _isAttackPlaying = false;
-        _attackLockUntilTime = 0f;
+        // 이동 파라미터 갱신만으로 공격 상태를 강제로 해제하지 않는다.
+        // (공격 도중 SetMoveSpeed가 들어와 애니메이션이 끊기는 문제 방지)
+        if (!_isAttackPlaying || CurrentAttackNormalizedTime >= 0.9f)
+            _attackLockUntilTime = 0f;
 
         // 파라미터 기반 로코모션이면 CrossFade로 상태를 건드리지 않는다.
         if (!(_hasSpeedParameter || _hasIsWalkParameter))
